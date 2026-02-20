@@ -16,7 +16,7 @@ class ClinicasController {
       const clinicas = await ClinicasModel.obtenerTodas();
 
       if (req.user?.rol === 'ADMIN') {
-        const propias = clinicas.filter(c => c.id === req.user.clinica_id);
+        const propias = clinicas.filter(c => c.id === req.user.clinica_id && c.deleted_at === null);
         return res.json({ success: true, data: propias, count: propias.length });
       }
 
@@ -73,7 +73,7 @@ class ClinicasController {
   static async actualizar(req, res) {
     try {
       const { id } = req.params;
-      const clinicaActual = await ClinicasModel.obtenerPorId(id);
+      const clinicaActual = await ClinicasModel.obtenerPorIdIncluyendoEliminadas(id);
 
       if (!clinicaActual) {
         return res.status(404).json({ success: false, error: 'Clínica no encontrada' });
@@ -102,18 +102,56 @@ class ClinicasController {
   static async eliminar(req, res) {
     try {
       const { id } = req.params;
-      const clinica = await ClinicasModel.obtenerPorId(id);
+      const clinica = await ClinicasModel.obtenerPorIdIncluyendoEliminadas(id);
 
       if (!clinica) {
         return res.status(404).json({ success: false, error: 'Clínica no encontrada' });
       }
 
       // Usar soft delete para cumplimiento legal (healthcare)
-      await ClinicasModel.softDelete(id, req.user?.id);
-      res.json({ success: true, message: 'Clínica eliminada correctamente' });
+      const clinicaDesactivada = await ClinicasModel.softDelete(id, req.user?.id);
+      res.json({ success: true, data: clinicaDesactivada, message: 'Clínica desactivada correctamente' });
     } catch (error) {
       console.error('Error al eliminar clínica:', error);
       res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  }
+
+  static async desactivar(req, res) {
+    try {
+      const { id } = req.params;
+      const clinica = await ClinicasModel.obtenerPorIdIncluyendoEliminadas(id);
+
+      if (!clinica) {
+        return res.status(404).json({ success: false, error: 'Clínica no encontrada' });
+      }
+
+      if (clinica.deleted_at) {
+        return res.status(400).json({ success: false, error: 'La clínica ya está desactivada' });
+      }
+
+      const clinicaDesactivada = await ClinicasModel.softDelete(id, req.user?.id);
+      return res.json({ success: true, data: clinicaDesactivada, message: 'Clínica desactivada correctamente' });
+    } catch (error) {
+      console.error('Error al desactivar clínica:', error);
+      return res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  }
+
+  static async reactivar(req, res) {
+    try {
+      const { id } = req.params;
+      const clinica = await ClinicasModel.obtenerPorIdIncluyendoEliminadas(id);
+
+      if (!clinica) {
+        return res.status(404).json({ success: false, error: 'Clínica no encontrada' });
+      }
+
+      const clinicaReactivada = await ClinicasModel.reactivar(id);
+      return res.json({ success: true, data: clinicaReactivada, message: 'Clínica reactivada correctamente' });
+    } catch (error) {
+      console.error('Error al reactivar clínica:', error);
+      return res.status(500).json({ success: false, error: 'Error interno del servidor' });
     }
   }
 }

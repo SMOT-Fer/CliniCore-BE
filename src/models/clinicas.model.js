@@ -13,9 +13,22 @@ class ClinicasModel {
 
   static async obtenerTodas() {
     const response = await db.query(
-      'SELECT * FROM clinicas WHERE deleted_at IS NULL ORDER BY created_at DESC'
+      `SELECT *
+       FROM clinicas
+       ORDER BY
+         CASE WHEN deleted_at IS NULL THEN 0 ELSE 1 END ASC,
+         CASE WHEN deleted_at IS NULL THEN created_at END DESC,
+         CASE WHEN deleted_at IS NOT NULL THEN deleted_at END DESC`
     );
     return response.rows;
+  }
+
+  static async obtenerPorIdIncluyendoEliminadas(id) {
+    const response = await db.query(
+      'SELECT * FROM clinicas WHERE id = $1',
+      [id]
+    );
+    return response.rows[0] || null;
   }
 
   static async obtenerPorId(id) {
@@ -61,7 +74,7 @@ class ClinicasModel {
     valores.push(id);
 
     const response = await db.query(
-      `UPDATE clinicas SET ${setClause} WHERE id = $${valores.length} AND deleted_at IS NULL
+      `UPDATE clinicas SET ${setClause} WHERE id = $${valores.length}
        RETURNING *`,
       valores
     );
@@ -76,13 +89,27 @@ class ClinicasModel {
   static async softDelete(id, deletedByUserId) {
     const response = await db.query(
       `UPDATE clinicas
-       SET deleted_at = NOW(), deleted_by = $2
+       SET deleted_at = NOW(), deleted_by = $2, estado = 'INACTIVA'
        WHERE id = $1 AND deleted_at IS NULL
-       RETURNING id`,
+       RETURNING *`,
       [id, deletedByUserId]
     );
 
-    return response.rows.length > 0;
+    return response.rows[0] || null;
+  }
+
+  static async reactivar(id) {
+    const response = await db.query(
+      `UPDATE clinicas
+       SET deleted_at = NULL,
+           deleted_by = NULL,
+           estado = 'ACTIVA'
+       WHERE id = $1
+       RETURNING *`,
+      [id]
+    );
+
+    return response.rows[0] || null;
   }
 
   /**

@@ -20,6 +20,10 @@ router.post('/', authorizeRoles('SUPERADMIN'), validateBody(schemaCrearClinica),
 
 router.put('/:id', authorizeRoles('SUPERADMIN'), validateParams(schemaIdParam), validateBody(schemaActualizarClinica), ClinicasController.actualizar);
 
+router.post('/:id/desactivar', authorizeRoles('SUPERADMIN'), validateParams(schemaIdParam), ClinicasController.desactivar);
+
+router.post('/:id/reactivar', authorizeRoles('SUPERADMIN'), validateParams(schemaIdParam), ClinicasController.reactivar);
+
 router.delete('/:id', authorizeRoles('SUPERADMIN'), validateParams(schemaIdParam), ClinicasController.eliminar);
 
 module.exports = router;
