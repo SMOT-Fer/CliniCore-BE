@@ -7,6 +7,8 @@ const CAMPOS_VISIBLES = `
   email,
   rol,
   estado,
+  deleted_at,
+  deleted_by,
   ultimo_login_at,
   created_at,
   updated_at
@@ -17,10 +19,22 @@ class UsuariosModel {
     const response = await db.query(
       `SELECT ${CAMPOS_VISIBLES}
        FROM usuarios
-       WHERE deleted_at IS NULL
-       ORDER BY created_at DESC`
+       ORDER BY
+         CASE WHEN deleted_at IS NULL THEN 0 ELSE 1 END,
+         CASE WHEN deleted_at IS NULL THEN created_at END DESC,
+         CASE WHEN deleted_at IS NOT NULL THEN deleted_at END DESC`
     );
     return response.rows;
+  }
+
+  static async obtenerPorIdIncluyendoEliminados(id) {
+    const response = await db.query(
+      `SELECT ${CAMPOS_VISIBLES}
+       FROM usuarios
+       WHERE id = $1`,
+      [id]
+    );
+    return response.rows[0] || null;
   }
 
   static async obtenerPorId(id) {
@@ -79,7 +93,7 @@ class UsuariosModel {
     valores.push(id);
 
     const response = await db.query(
-      `UPDATE usuarios SET ${setClause} WHERE id = $${valores.length} AND deleted_at IS NULL
+      `UPDATE usuarios SET ${setClause} WHERE id = $${valores.length}
        RETURNING ${CAMPOS_VISIBLES}`,
       valores
     );
@@ -106,13 +120,27 @@ class UsuariosModel {
   static async softDelete(id, deletedByUserId) {
     const response = await db.query(
       `UPDATE usuarios
-       SET deleted_at = NOW(), deleted_by = $2
+       SET deleted_at = NOW(), deleted_by = $2, estado = 'INACTIVO'
        WHERE id = $1 AND deleted_at IS NULL
-       RETURNING id`,
+       RETURNING ${CAMPOS_VISIBLES}`,
       [id, deletedByUserId]
     );
 
-    return response.rows.length > 0;
+    return response.rows[0] || null;
+  }
+
+  static async reactivar(id) {
+    const response = await db.query(
+      `UPDATE usuarios
+       SET deleted_at = NULL,
+           deleted_by = NULL,
+           estado = 'ACTIVO'
+       WHERE id = $1
+       RETURNING ${CAMPOS_VISIBLES}`,
+      [id]
+    );
+
+    return response.rows[0] || null;
   }
 
   /**

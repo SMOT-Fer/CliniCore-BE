@@ -18,7 +18,7 @@ const CSRF_COOKIE_OPTIONS = {
 };
 
 const ROLES_VALIDOS = new Set(['ADMIN', 'DOCTOR', 'STAFF', 'SUPERADMIN']);
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
 function normalizarEmail(email) {
   return String(email).trim().toUpperCase();
@@ -106,7 +106,7 @@ class UsuariosController {
       if (!validarPasswordEstricto(password)) {
         return res.status(400).json({
           success: false,
-          error: 'La contraseña debe tener al menos 8 caracteres, mayúsculas, minúsculas, número y símbolo'
+          error: 'La contraseña debe tener al menos 8 caracteres, con mayúsculas, minúsculas y números'
         });
       }
 
@@ -164,7 +164,7 @@ class UsuariosController {
   static async actualizar(req, res) {
     try {
       const { id } = req.params;
-      const usuarioActual = await UsuariosModel.obtenerPorId(id);
+      const usuarioActual = await UsuariosModel.obtenerPorIdIncluyendoEliminados(id);
 
       if (!usuarioActual) {
         return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
@@ -228,7 +228,7 @@ class UsuariosController {
         if (!validarPasswordEstricto(req.body.password)) {
           return res.status(400).json({
             success: false,
-            error: 'La contraseña debe tener al menos 8 caracteres, mayúsculas, minúsculas, número y símbolo'
+            error: 'La contraseña debe tener al menos 8 caracteres, con mayúsculas, minúsculas y números'
           });
         }
 
@@ -246,7 +246,7 @@ class UsuariosController {
   static async eliminar(req, res) {
     try {
       const { id } = req.params;
-      const usuario = await UsuariosModel.obtenerPorId(id);
+      const usuario = await UsuariosModel.obtenerPorIdIncluyendoEliminados(id);
 
       if (!usuario) {
         return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
@@ -263,11 +263,69 @@ class UsuariosController {
       }
 
       // Usar soft delete para cumplimiento legal (healthcare)
-      await UsuariosModel.softDelete(id, req.user?.id);
-      res.json({ success: true, message: 'Usuario eliminado correctamente' });
+      const usuarioEliminado = await UsuariosModel.softDelete(id, req.user?.id);
+      res.json({ success: true, data: usuarioEliminado, message: 'Usuario eliminado correctamente' });
     } catch (error) {
       console.error('Error al eliminar usuario:', error);
       res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  }
+
+  static async desactivar(req, res) {
+    try {
+      const { id } = req.params;
+      const usuario = await UsuariosModel.obtenerPorIdIncluyendoEliminados(id);
+
+      if (!usuario) {
+        return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
+      }
+
+      if (usuario.deleted_at) {
+        return res.status(400).json({ success: false, error: 'El usuario ya está desactivado' });
+      }
+
+      if (req.user?.rol === 'ADMIN') {
+        if (usuario.clinica_id !== req.user.clinica_id) {
+          return res.status(403).json({ success: false, error: 'ADMIN solo puede desactivar usuarios de su clínica' });
+        }
+
+        if (usuario.rol === 'ADMIN' || usuario.rol === 'SUPERADMIN') {
+          return res.status(403).json({ success: false, error: 'ADMIN no puede desactivar usuarios ADMIN o SUPERADMIN' });
+        }
+      }
+
+      const usuarioDesactivado = await UsuariosModel.softDelete(id, req.user?.id);
+      return res.json({ success: true, data: usuarioDesactivado, message: 'Usuario desactivado correctamente' });
+    } catch (error) {
+      console.error('Error al desactivar usuario:', error);
+      return res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  }
+
+  static async reactivar(req, res) {
+    try {
+      const { id } = req.params;
+      const usuario = await UsuariosModel.obtenerPorIdIncluyendoEliminados(id);
+
+      if (!usuario) {
+        return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
+      }
+
+      if (req.user?.rol === 'ADMIN') {
+        if (usuario.clinica_id !== req.user.clinica_id) {
+          return res.status(403).json({ success: false, error: 'ADMIN solo puede reactivar usuarios de su clínica' });
+        }
+
+        if (usuario.rol === 'ADMIN' || usuario.rol === 'SUPERADMIN') {
+          return res.status(403).json({ success: false, error: 'ADMIN no puede reactivar usuarios ADMIN o SUPERADMIN' });
+        }
+      }
+
+      const usuarioReactivado = await UsuariosModel.reactivar(id);
+      return res.json({ success: true, data: usuarioReactivado, message: 'Usuario reactivado correctamente' });
+    } catch (error) {
+      console.error('Error al reactivar usuario:', error);
+      return res.status(500).json({ success: false, error: 'Error interno del servidor' });
     }
   }
 

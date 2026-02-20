@@ -26,6 +26,10 @@ router.post('/', authorizeRoles('SUPERADMIN', 'ADMIN'), validateBody(schemaCrear
 
 router.put('/:id', authorizeRoles('SUPERADMIN', 'ADMIN'), validateParams(schemaIdParam), validateBody(schemaActualizarUsuario), UsuariosController.actualizar);
 
+router.post('/:id/desactivar', authorizeRoles('SUPERADMIN', 'ADMIN'), validateParams(schemaIdParam), UsuariosController.desactivar);
+
+router.post('/:id/reactivar', authorizeRoles('SUPERADMIN', 'ADMIN'), validateParams(schemaIdParam), UsuariosController.reactivar);
+
 router.delete('/:id', authorizeRoles('SUPERADMIN'), validateParams(schemaIdParam), UsuariosController.eliminar);
 
 module.exports = router;

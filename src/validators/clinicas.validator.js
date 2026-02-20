@@ -19,7 +19,7 @@ const schemaCrearClinica = z.object({
   ),
   telefono: z.preprocess(
     emptyToUndefined,
-    z.string().regex(/^[0-9+\-()\s]{6,20}$/, 'Teléfono inválido').optional()
+    z.string().regex(/^\d{6,20}$/, 'Teléfono debe contener solo números').optional()
   )
 });
 
@@ -36,7 +36,7 @@ const schemaActualizarClinica = z.object({
   ),
   telefono: z.preprocess(
     emptyToUndefined,
-    z.string().regex(/^[0-9+\-()\s]{6,20}$/, 'Teléfono inválido').optional()
+    z.string().regex(/^\d{6,20}$/, 'Teléfono debe contener solo números').optional()
   )
 }).refine((obj) => Object.keys(obj).length > 0, {
   message: 'Debe enviar al menos un campo para actualizar'
