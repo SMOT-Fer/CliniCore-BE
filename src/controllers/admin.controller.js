@@ -41,25 +41,37 @@ class AdminController {
 
   static async estadoSistema(req, res) {
     try {
+      const endDateRaw = typeof req.query?.endDate === 'string' ? req.query.endDate : null;
+      const endDateParsed = endDateRaw ? new Date(`${endDateRaw}T00:00:00`) : new Date();
+      const endDate = Number.isNaN(endDateParsed.getTime()) ? new Date() : endDateParsed;
+      endDate.setHours(0, 0, 0, 0);
+
+      const startDate = new Date(endDate);
+      startDate.setDate(startDate.getDate() - 6);
+
+      const startDateKey = startDate.toISOString().slice(0, 10);
+      const endDateKey = endDate.toISOString().slice(0, 10);
+
       const responseActividad = await db.query(
         `SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS dia,
                 COUNT(*)::int AS total
          FROM refresh_tokens
-         WHERE created_at >= date_trunc('day', NOW()) - INTERVAL '6 day'
+         WHERE created_at >= $1::date
+           AND created_at < ($2::date + INTERVAL '1 day')
          GROUP BY 1
-         ORDER BY 1 ASC`
+         ORDER BY 1 ASC`,
+        [startDateKey, endDateKey]
       );
 
       const actividadMap = new Map(responseActividad.rows.map((row) => [row.dia, row.total]));
       const actividad7dias = [];
 
-      for (let offset = 6; offset >= 0; offset -= 1) {
-        const date = new Date();
-        date.setHours(0, 0, 0, 0);
-        date.setDate(date.getDate() - offset);
+      for (let offset = 0; offset < 7; offset += 1) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + offset);
 
         const key = date.toISOString().slice(0, 10);
-        const etiqueta = date.toLocaleDateString('es-PE', { weekday: 'short' });
+        const etiqueta = date.toLocaleDateString('es-PE', { weekday: 'short' }).replace('.', '').toUpperCase();
 
         actividad7dias.push({
           dia: key,
@@ -89,7 +101,11 @@ class AdminController {
         data: {
           seguridad,
           configuracion,
-          actividad7dias
+          actividad7dias,
+          rango: {
+            inicio: startDateKey,
+            fin: endDateKey
+          }
         }
       });
     } catch (error) {
