@@ -3,9 +3,22 @@ const db = require('../config/db');
 class PersonasModel {
   static async obtenerTodas() {
     const response = await db.query(
-      'SELECT * FROM personas WHERE deleted_at IS NULL ORDER BY created_at DESC'
+      `SELECT *
+       FROM personas
+       ORDER BY
+         CASE WHEN deleted_at IS NULL THEN 0 ELSE 1 END,
+         created_at DESC,
+         deleted_at DESC NULLS LAST`
     );
     return response.rows;
+  }
+
+  static async obtenerPorIdIncluyendoEliminadas(id) {
+    const response = await db.query(
+      'SELECT * FROM personas WHERE id = $1',
+      [id]
+    );
+    return response.rows[0] || null;
   }
 
   static async obtenerPorId(id) {
@@ -82,6 +95,18 @@ class PersonasModel {
     );
 
     return response.rows.length > 0;
+  }
+
+  static async reactivar(id) {
+    const response = await db.query(
+      `UPDATE personas
+       SET deleted_at = NULL, deleted_by = NULL
+       WHERE id = $1 AND deleted_at IS NOT NULL
+       RETURNING *`,
+      [id]
+    );
+
+    return response.rows[0] || null;
   }
 
   /**

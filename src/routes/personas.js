@@ -41,4 +41,9 @@ router.put('/:id', authorizeRoles('SUPERADMIN', 'ADMIN'), validateParams(schemaI
  */
 router.delete('/:id', authorizeRoles('SUPERADMIN', 'ADMIN'), validateParams(schemaIdParam), PersonasController.eliminar);
 
+/**
+ * POST /api/personas/:id/reactivar - Reactivar persona (soft undelete)
+ */
+router.post('/:id/reactivar', authorizeRoles('SUPERADMIN', 'ADMIN'), validateParams(schemaIdParam), PersonasController.reactivar);
+
 module.exports = router;
