@@ -375,7 +375,7 @@ class UsuariosController {
         maxAge: 7 * 24 * 60 * 60 * 1000
       });
 
-      res.json({ success: true, data: usuarioConLogin });
+      res.json({ success: true, data: { ...usuarioConLogin, sessionId: nuevaSesion.id } });
     } catch (error) {
       console.error('Error en login:', error);
       res.status(500).json({ success: false, error: 'Error interno del servidor' });
