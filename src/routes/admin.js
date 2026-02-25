@@ -9,6 +9,7 @@ const { schemaIdParam } = require('../validators/common.validator');
 router.use(authenticateToken);
 router.use(authorizeRoles('SUPERADMIN'));
 
+router.get('/dashboard-summary', AdminController.resumenDashboard);
 router.get('/sesiones', AdminController.listarSesiones);
 router.get('/system-status', AdminController.estadoSistema);
 router.post('/sesiones/:id/revocar', validateParams(schemaIdParam), AdminController.revocarSesion);
