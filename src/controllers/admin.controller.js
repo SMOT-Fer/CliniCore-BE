@@ -107,12 +107,13 @@ class AdminController {
         db.query(
           `SELECT COUNT(*) FILTER (WHERE deleted_at IS NULL)::int AS total,
                   COUNT(*) FILTER (WHERE deleted_at IS NULL AND estado = 'ACTIVA')::int AS activas
-           FROM clinicas`
+           FROM empresas`
         ),
         db.query(
           `SELECT nombre
-           FROM clinicas
-           WHERE deleted_at IS NULL AND estado = 'ACTIVA'
+           FROM empresas
+           WHERE deleted_at IS NULL
+             AND estado = 'ACTIVA'
            ORDER BY created_at DESC
            LIMIT 50`
         ),

@@ -38,6 +38,27 @@ function asegurarCsrfCookie(req, res) {
   }
 }
 
+function obtenerEmpresaId(input = {}) {
+  return input.empresa_id ?? input.clinica_id ?? null;
+}
+
+function toSlug(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)+/g, '');
+}
+
+function construirRedirectPath(usuario, contextoEmpresa) {
+  if (usuario?.rol === 'SUPERADMIN' && !contextoEmpresa?.id) return '/superadmin';
+  if (!contextoEmpresa?.id) return null;
+
+  const nombreSlug = toSlug(contextoEmpresa.nombre || contextoEmpresa.id);
+  return `/empresa/${nombreSlug}`;
+}
+
 class UsuariosController {
   static async miSesion(req, res) {
     try {
@@ -48,7 +69,28 @@ class UsuariosController {
         return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
       }
 
-      return res.json({ success: true, data: usuario });
+      const contextoEmpresa = await UsuariosModel.obtenerContextoEmpresa(usuario.id);
+      const redirectPath = construirRedirectPath(usuario, contextoEmpresa);
+
+      if (!redirectPath) {
+        return res.status(403).json({ success: false, error: 'Usuario sin empresa asignada o sin ruta de acceso válida' });
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          ...usuario,
+          empresa: contextoEmpresa ? {
+            id: contextoEmpresa.id,
+            nombre: contextoEmpresa.nombre,
+            estado: contextoEmpresa.estado,
+            tipo_negocio_id: contextoEmpresa.tipo_negocio_id,
+            tipo_negocio_codigo: contextoEmpresa.tipo_negocio_codigo,
+            tipo_negocio_nombre: contextoEmpresa.tipo_negocio_nombre
+          } : null,
+          redirect_path: redirectPath
+        }
+      });
     } catch (error) {
       console.error('Error al validar sesión:', error);
       return res.status(500).json({ success: false, error: 'Error interno del servidor' });
@@ -58,9 +100,10 @@ class UsuariosController {
   static async obtenerTodos(req, res) {
     try {
       const usuarios = await UsuariosModel.obtenerTodos();
+      const empresaIdUsuario = req.user?.empresa_id ?? req.user?.clinica_id;
 
       if (req.user?.rol === 'ADMIN') {
-        const propios = usuarios.filter(u => u.clinica_id === req.user.clinica_id);
+        const propios = usuarios.filter(u => u.empresa_id === empresaIdUsuario);
         return res.json({ success: true, data: propios, count: propios.length });
       }
 
@@ -80,7 +123,8 @@ class UsuariosController {
         return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
       }
 
-      if (req.user?.rol === 'ADMIN' && usuario.clinica_id !== req.user.clinica_id) {
+      const empresaIdUsuario = req.user?.empresa_id ?? req.user?.clinica_id;
+      if (req.user?.rol === 'ADMIN' && usuario.empresa_id !== empresaIdUsuario) {
         return res.status(403).json({ success: false, error: 'No autorizado para este usuario' });
       }
 
@@ -97,7 +141,8 @@ class UsuariosController {
 
   static async crear(req, res) {
     try {
-      const { clinica_id, persona_id, email, password, rol, estado } = req.body;
+      const empresa_id = obtenerEmpresaId(req.body);
+      const { persona_id, email, password, rol, estado } = req.body;
 
       if (!persona_id || !email || !password || !rol) {
         return res.status(400).json({ success: false, error: 'Faltan campos requeridos: persona_id, email, password, rol' });
@@ -118,17 +163,18 @@ class UsuariosController {
         return res.status(403).json({ success: false, error: 'No está permitido crear usuarios SUPERADMIN desde este módulo' });
       }
 
-      if (rol !== 'SUPERADMIN' && !clinica_id) {
-        return res.status(400).json({ success: false, error: 'clinica_id es obligatorio para roles ADMIN, DOCTOR y STAFF' });
+      if (rol !== 'SUPERADMIN' && !empresa_id) {
+        return res.status(400).json({ success: false, error: 'empresa_id es obligatorio para roles ADMIN, DOCTOR y STAFF' });
       }
 
       if (req.user?.rol === 'ADMIN') {
+        const empresaIdUsuario = req.user?.empresa_id ?? req.user?.clinica_id;
         if (rol === 'SUPERADMIN' || rol === 'ADMIN') {
           return res.status(403).json({ success: false, error: 'ADMIN no puede crear usuarios ADMIN o SUPERADMIN' });
         }
 
-        if (clinica_id !== req.user.clinica_id) {
-          return res.status(403).json({ success: false, error: 'ADMIN solo puede crear usuarios en su clínica' });
+        if (empresa_id !== empresaIdUsuario) {
+          return res.status(403).json({ success: false, error: 'ADMIN solo puede crear usuarios en su empresa' });
         }
       }
 
@@ -146,7 +192,7 @@ class UsuariosController {
       const passwordHash = await hashPassword(password);
 
       const usuario = await UsuariosModel.crear({
-        clinica_id: rol === 'SUPERADMIN' ? null : clinica_id,
+        empresa_id: rol === 'SUPERADMIN' ? null : empresa_id,
         persona_id,
         email: emailNormalizado,
         password_hash: passwordHash,
@@ -171,8 +217,9 @@ class UsuariosController {
       }
 
       if (req.user?.rol === 'ADMIN') {
-        if (usuarioActual.clinica_id !== req.user.clinica_id) {
-          return res.status(403).json({ success: false, error: 'ADMIN solo puede editar usuarios de su clínica' });
+        const empresaIdUsuario = req.user?.empresa_id ?? req.user?.clinica_id;
+        if (usuarioActual.empresa_id !== empresaIdUsuario) {
+          return res.status(403).json({ success: false, error: 'ADMIN solo puede editar usuarios de su empresa' });
         }
       }
 
@@ -203,8 +250,10 @@ class UsuariosController {
         }
       }
 
+      const empresa_id = obtenerEmpresaId(req.body);
+
       const payload = {
-        clinica_id: req.body.clinica_id,
+        empresa_id,
         persona_id: req.body.persona_id,
         email: req.body.email ? normalizarEmail(req.body.email) : undefined,
         rol: req.body.rol,
@@ -212,16 +261,19 @@ class UsuariosController {
       };
 
       const rolFinal = req.body.rol || usuarioActual.rol;
-      const clinicaFinal = req.body.clinica_id !== undefined ? req.body.clinica_id : usuarioActual.clinica_id;
+      const empresaFinal = empresa_id !== null && empresa_id !== undefined ? empresa_id : usuarioActual.empresa_id;
 
-      if (req.user?.rol === 'ADMIN' && clinicaFinal !== req.user.clinica_id) {
-        return res.status(403).json({ success: false, error: 'ADMIN no puede mover usuarios fuera de su clínica' });
+      if (req.user?.rol === 'ADMIN') {
+        const empresaIdUsuario = req.user?.empresa_id ?? req.user?.clinica_id;
+        if (empresaFinal !== empresaIdUsuario) {
+          return res.status(403).json({ success: false, error: 'ADMIN no puede mover usuarios fuera de su empresa' });
+        }
       }
 
       if (rolFinal === 'SUPERADMIN') {
-        payload.clinica_id = null;
-      } else if (!clinicaFinal) {
-        return res.status(400).json({ success: false, error: 'clinica_id es obligatorio para roles ADMIN, DOCTOR y STAFF' });
+        payload.empresa_id = null;
+      } else if (!empresaFinal) {
+        return res.status(400).json({ success: false, error: 'empresa_id es obligatorio para roles ADMIN, DOCTOR y STAFF' });
       }
 
       if (req.body.password !== undefined) {
@@ -253,8 +305,9 @@ class UsuariosController {
       }
 
       if (req.user?.rol === 'ADMIN') {
-        if (usuario.clinica_id !== req.user.clinica_id) {
-          return res.status(403).json({ success: false, error: 'ADMIN solo puede eliminar usuarios de su clínica' });
+        const empresaIdUsuario = req.user?.empresa_id ?? req.user?.clinica_id;
+        if (usuario.empresa_id !== empresaIdUsuario) {
+          return res.status(403).json({ success: false, error: 'ADMIN solo puede eliminar usuarios de su empresa' });
         }
 
         if (usuario.rol === 'ADMIN' || usuario.rol === 'SUPERADMIN') {
@@ -285,8 +338,9 @@ class UsuariosController {
       }
 
       if (req.user?.rol === 'ADMIN') {
-        if (usuario.clinica_id !== req.user.clinica_id) {
-          return res.status(403).json({ success: false, error: 'ADMIN solo puede desactivar usuarios de su clínica' });
+        const empresaIdUsuario = req.user?.empresa_id ?? req.user?.clinica_id;
+        if (usuario.empresa_id !== empresaIdUsuario) {
+          return res.status(403).json({ success: false, error: 'ADMIN solo puede desactivar usuarios de su empresa' });
         }
 
         if (usuario.rol === 'ADMIN' || usuario.rol === 'SUPERADMIN') {
@@ -312,8 +366,9 @@ class UsuariosController {
       }
 
       if (req.user?.rol === 'ADMIN') {
-        if (usuario.clinica_id !== req.user.clinica_id) {
-          return res.status(403).json({ success: false, error: 'ADMIN solo puede reactivar usuarios de su clínica' });
+        const empresaIdUsuario = req.user?.empresa_id ?? req.user?.clinica_id;
+        if (usuario.empresa_id !== empresaIdUsuario) {
+          return res.status(403).json({ success: false, error: 'ADMIN solo puede reactivar usuarios de su empresa' });
         }
 
         if (usuario.rol === 'ADMIN' || usuario.rol === 'SUPERADMIN') {
@@ -353,6 +408,12 @@ class UsuariosController {
       }
 
       const usuarioConLogin = await UsuariosModel.actualizarUltimoLogin(usuario.id);
+      const contextoEmpresa = await UsuariosModel.obtenerContextoEmpresa(usuarioConLogin.id);
+      const redirectPath = construirRedirectPath(usuarioConLogin, contextoEmpresa);
+
+      if (!redirectPath) {
+        return res.status(403).json({ success: false, error: 'Usuario sin empresa asignada o sin ruta de acceso válida' });
+      }
       const refreshToken = generarRefreshToken(usuarioConLogin);
       const refreshTokenHash = hashToken(refreshToken);
       const refreshExpira = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -375,7 +436,22 @@ class UsuariosController {
         maxAge: 7 * 24 * 60 * 60 * 1000
       });
 
-      res.json({ success: true, data: { ...usuarioConLogin, sessionId: nuevaSesion.id } });
+      res.json({
+        success: true,
+        data: {
+          ...usuarioConLogin,
+          sessionId: nuevaSesion.id,
+          empresa: contextoEmpresa ? {
+            id: contextoEmpresa.id,
+            nombre: contextoEmpresa.nombre,
+            estado: contextoEmpresa.estado,
+            tipo_negocio_id: contextoEmpresa.tipo_negocio_id,
+            tipo_negocio_codigo: contextoEmpresa.tipo_negocio_codigo,
+            tipo_negocio_nombre: contextoEmpresa.tipo_negocio_nombre
+          } : null,
+          redirect_path: redirectPath
+        }
+      });
     } catch (error) {
       console.error('Error en login:', error);
       res.status(500).json({ success: false, error: 'Error interno del servidor' });

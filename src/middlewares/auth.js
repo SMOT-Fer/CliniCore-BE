@@ -59,7 +59,8 @@ async function authenticateToken(req, res, next) {
     req.user = {
       id: usuarioActualizado.id,
       rol: usuarioActualizado.rol,
-      clinica_id: usuarioActualizado.clinica_id
+      empresa_id: usuarioActualizado.empresa_id,
+      clinica_id: usuarioActualizado.empresa_id
     };
 
     next();

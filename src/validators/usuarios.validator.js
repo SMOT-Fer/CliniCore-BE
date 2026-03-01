@@ -6,6 +6,7 @@ const schemaLogin = z.object({
 });
 
 const schemaCrearUsuario = z.object({
+  empresa_id: z.string().uuid().nullable().optional(),
   clinica_id: z.string().uuid().nullable().optional(),
   persona_id: z.string().uuid('persona_id inválido'),
   email: z.string().trim().email('Email inválido'),
@@ -15,6 +16,7 @@ const schemaCrearUsuario = z.object({
 });
 
 const schemaActualizarUsuario = z.object({
+  empresa_id: z.string().uuid().nullable().optional(),
   clinica_id: z.string().uuid().nullable().optional(),
   persona_id: z.string().uuid('persona_id inválido').optional(),
   email: z.string().trim().email('Email inválido').optional(),

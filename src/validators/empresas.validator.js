@@ -6,8 +6,9 @@ const emptyToUndefined = (value) => {
   return trimmed === '' ? undefined : trimmed;
 };
 
-const schemaCrearClinica = z.object({
-  nombre: z.string().trim().min(1, 'Nombre de clínica requerido').max(150, 'Nombre demasiado largo'),
+const schemaCrearEmpresa = z.object({
+  nombre: z.string().trim().min(1, 'Nombre de empresa requerido').max(150, 'Nombre demasiado largo'),
+  tipo_negocio_id: z.string().uuid('tipo_negocio_id inválido'),
   ruc: z.preprocess(
     emptyToUndefined,
     z.string().regex(/^\d{11}$/, 'RUC debe tener 11 dígitos').optional()
@@ -23,8 +24,9 @@ const schemaCrearClinica = z.object({
   )
 });
 
-const schemaActualizarClinica = z.object({
-  nombre: z.string().trim().min(1, 'Nombre de clínica requerido').max(150, 'Nombre demasiado largo').optional(),
+const schemaActualizarEmpresa = z.object({
+  nombre: z.string().trim().min(1, 'Nombre de empresa requerido').max(150, 'Nombre demasiado largo').optional(),
+  tipo_negocio_id: z.string().uuid('tipo_negocio_id inválido').optional(),
   ruc: z.preprocess(
     emptyToUndefined,
     z.string().regex(/^\d{11}$/, 'RUC debe tener 11 dígitos').optional()
@@ -43,6 +45,6 @@ const schemaActualizarClinica = z.object({
 });
 
 module.exports = {
-  schemaCrearClinica,
-  schemaActualizarClinica
+  schemaCrearEmpresa,
+  schemaActualizarEmpresa
 };

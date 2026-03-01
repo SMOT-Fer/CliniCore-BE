@@ -2,7 +2,8 @@ const db = require('../config/db');
 
 const CAMPOS_VISIBLES = `
   id,
-  clinica_id,
+  empresa_id,
+  empresa_id AS clinica_id,
   persona_id,
   email,
   rol,
@@ -15,6 +16,26 @@ const CAMPOS_VISIBLES = `
 `;
 
 class UsuariosModel {
+  static async obtenerContextoEmpresa(usuarioId) {
+    const response = await db.query(
+      `SELECT
+          e.id,
+          e.nombre,
+          e.estado,
+          e.tipo_negocio_id,
+          tn.codigo AS tipo_negocio_codigo,
+          tn.nombre AS tipo_negocio_nombre
+       FROM usuarios u
+       LEFT JOIN empresas e ON e.id = u.empresa_id
+       LEFT JOIN tipos_negocio tn ON tn.id = e.tipo_negocio_id
+       WHERE u.id = $1
+       LIMIT 1`,
+      [usuarioId]
+    );
+
+    return response.rows[0] || null;
+  }
+
   static async obtenerTodos() {
     const response = await db.query(
       `SELECT ${CAMPOS_VISIBLES}
@@ -58,21 +79,24 @@ class UsuariosModel {
   }
 
   static async crear(datos) {
-    const { clinica_id, persona_id, email, password_hash, rol, estado } = datos;
+    const empresaId = datos.empresa_id ?? datos.clinica_id ?? null;
+    const { persona_id, email, password_hash, rol, estado } = datos;
 
     const response = await db.query(
-      `INSERT INTO usuarios (clinica_id, persona_id, email, password_hash, rol, estado)
+      `INSERT INTO usuarios (empresa_id, persona_id, email, password_hash, rol, estado)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING ${CAMPOS_VISIBLES}`,
-      [clinica_id || null, persona_id, email, password_hash, rol, estado || 'ACTIVO']
+      [empresaId, persona_id, email, password_hash, rol, estado || 'ACTIVO']
     );
 
     return response.rows[0];
   }
 
   static async actualizar(id, datos) {
+    const empresaId = datos.empresa_id ?? datos.clinica_id;
+
     const camposActualizables = {
-      clinica_id: datos.clinica_id,
+      empresa_id: empresaId,
       persona_id: datos.persona_id,
       email: datos.email,
       password_hash: datos.password_hash,

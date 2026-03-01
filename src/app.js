@@ -8,7 +8,8 @@ const runtimeState = require('./config/runtime-state');
 const swaggerSpec = require('./config/swagger');
 
 const personasRoutes = require('./routes/personas');
-const clinicasRoutes = require('./routes/clinicas');
+const empresasRoutes = require('./routes/empresas');
+const tiposNegocioRoutes = require('./routes/tipos-negocio');
 const usuariosRoutes = require('./routes/usuarios');
 const adminRoutes = require('./routes/admin');
 const auditLogsRoutes = require('./routes/audit-logs');
@@ -138,7 +139,9 @@ app.get('/superadmin', authenticateToken, authorizeRoles('SUPERADMIN'), (req, re
 app.use('/api', csrfMiddleware);
 app.use('/api', auditContext); // Inyecta contexto de auditoría (user_id)
 app.use('/api/personas', personasRoutes);
-app.use('/api/clinicas', clinicasRoutes);
+app.use('/api/empresas', empresasRoutes);
+app.use('/api/clinicas', empresasRoutes);
+app.use('/api/tipos-negocio', tiposNegocioRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/audit-logs', auditLogsRoutes);

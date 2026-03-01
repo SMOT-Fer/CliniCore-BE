@@ -10,7 +10,8 @@ function generarAccessToken(usuario, sessionId) {
     {
       sub: usuario.id,
       rol: usuario.rol,
-      clinica_id: usuario.clinica_id,
+      empresa_id: usuario.empresa_id,
+      clinica_id: usuario.empresa_id,
       sid: sessionId
     },
     JWT_ACCESS_SECRET,
@@ -23,7 +24,8 @@ function generarRefreshToken(usuario) {
     {
       sub: usuario.id,
       rol: usuario.rol,
-      clinica_id: usuario.clinica_id
+      empresa_id: usuario.empresa_id,
+      clinica_id: usuario.empresa_id
     },
     JWT_REFRESH_SECRET,
     { expiresIn: JWT_REFRESH_EXPIRES_IN }
