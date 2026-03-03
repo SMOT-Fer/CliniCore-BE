@@ -53,4 +53,8 @@ async function close() {
   }
 }
 
-module.exports = { query, ping, close };
+async function getClient() {
+  return pool.connect();
+}
+
+module.exports = { query, ping, close, getClient };

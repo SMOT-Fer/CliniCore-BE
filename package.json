@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
+    "migrate": "node -e \"require('./src/config/env'); require('./src/db/migrate').runMigrations().then(() => { console.log('Migraciones OK'); process.exit(0); }).catch((e) => { console.error(e); process.exit(1); })\"",
     "test": "node -e \"console.log('No tests configured in minimal setup')\""
   },
   "keywords": [],

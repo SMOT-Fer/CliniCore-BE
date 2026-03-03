@@ -1,4 +1,5 @@
 const EmpresasModel = require('../models/empresas.model');
+const SuscripcionesModel = require('../models/suscripciones.model');
 
 class EmpresasController {
   static async obtenerActivasPublicas(req, res) {
@@ -69,6 +70,9 @@ class EmpresasController {
       }
 
       const empresa = await EmpresasModel.crear(req.body);
+
+      await SuscripcionesModel.crearSuscripcionTrialInicial(empresa.id, req.user?.id || null);
+
       res.status(201).json({ success: true, data: empresa });
     } catch (error) {
       console.error('Error al crear empresa:', error);

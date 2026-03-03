@@ -109,36 +109,11 @@ class PersonasController {
         return res.status(404).json({ success: false, error: 'Persona no encontrada' });
       }
 
-      // Usar soft delete para cumplimiento legal
-      await PersonasModel.softDelete(id, req.user?.id);
-      
-      // Devolver la persona actualizada (con deleted_at)
-      const personaActualizada = await PersonasModel.obtenerPorIdIncluyendoEliminadas(id);
-      res.json({ success: true, data: personaActualizada, message: 'Persona eliminada correctamente' });
+      await PersonasModel.eliminar(id);
+      res.json({ success: true, message: 'Persona eliminada correctamente' });
     } catch (error) {
       console.error('Error al eliminar persona:', error);
       res.status(500).json({ success: false, error: 'Error interno del servidor' });
-    }
-  }
-
-  static async reactivar(req, res) {
-    try {
-      const { id } = req.params;
-      const persona = await PersonasModel.obtenerPorIdIncluyendoEliminadas(id);
-
-      if (!persona) {
-        return res.status(404).json({ success: false, error: 'Persona no encontrada' });
-      }
-
-      if (!persona.deleted_at) {
-        return res.status(400).json({ success: false, error: 'La persona ya está activa' });
-      }
-
-      const personaReactivada = await PersonasModel.reactivar(id);
-      return res.json({ success: true, data: personaReactivada });
-    } catch (error) {
-      console.error('Error al reactivar persona:', error);
-      return res.status(500).json({ success: false, error: 'Error interno del servidor' });
     }
   }
 }

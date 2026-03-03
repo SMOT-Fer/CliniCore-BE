@@ -58,6 +58,21 @@ class AuditLogController {
         }
       });
     } catch (error) {
+      if (error && error.code === '42P01') {
+        return res.json({
+          success: true,
+          data: {
+            logs: [],
+            pagination: {
+              limit: 0,
+              offset: 0,
+              total: 0
+            }
+          },
+          warning: 'Tabla audit_log no existe en esta base de datos'
+        });
+      }
+
       return res.status(500).json({
         success: false,
         error: 'Error al recuperar audit logs'
@@ -94,6 +109,16 @@ class AuditLogController {
         }
       });
     } catch (error) {
+      if (error && error.code === '42P01') {
+        return res.json({
+          success: true,
+          data: {
+            historia: []
+          },
+          warning: 'Tabla audit_log no existe en esta base de datos'
+        });
+      }
+
       return res.status(500).json({
         success: false,
         error: 'Error al recuperar historia'

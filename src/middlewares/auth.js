@@ -1,6 +1,7 @@
 const { verificarAccessToken } = require('../utils/jwt');
 const UsuariosModel = require('../models/usuarios.model');
 const RefreshTokensModel = require('../models/refresh_tokens.model');
+const SuscripcionesModel = require('../models/suscripciones.model');
 
 const SESSION_IDLE_MINUTES = Number(process.env.SESSION_IDLE_MINUTES || 60);
 const SESSION_IDLE_MS = SESSION_IDLE_MINUTES * 60 * 1000;
@@ -55,6 +56,27 @@ async function authenticateToken(req, res, next) {
     }
 
     const usuarioActualizado = await UsuariosModel.actualizarUltimoLogin(usuario.id);
+
+    if (usuarioActualizado.rol !== 'SUPERADMIN') {
+      const empresaId = usuarioActualizado.empresa_id;
+
+      if (!empresaId) {
+        return res.status(403).json({ success: false, error: 'Usuario sin empresa asignada' });
+      }
+
+      const isPlatformPath = req.originalUrl.startsWith('/api/platform');
+      const vigente = await SuscripcionesModel.obtenerVigentePorEmpresa(empresaId);
+
+      if (!vigente && !isPlatformPath) {
+        return res.status(402).json({
+          success: false,
+          error: 'Tu clínica no tiene una suscripción activa',
+          code: 'SUSCRIPCION_REQUERIDA'
+        });
+      }
+
+      req.subscription = vigente || null;
+    }
 
     req.user = {
       id: usuarioActualizado.id,

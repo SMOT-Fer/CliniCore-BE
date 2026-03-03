@@ -178,7 +178,7 @@ class UsuariosModel {
 
   static async existeEmail(email) {
     const response = await db.query(
-      'SELECT id FROM usuarios WHERE UPPER(email) = UPPER($1) AND deleted_at IS NULL',
+      'SELECT id FROM usuarios WHERE UPPER(email) = UPPER($1)',
       [email]
     );
     return response.rows.length > 0;
@@ -186,7 +186,7 @@ class UsuariosModel {
 
   static async existePersona(personaId) {
     const response = await db.query(
-      'SELECT id FROM usuarios WHERE persona_id = $1 AND deleted_at IS NULL',
+      'SELECT id FROM usuarios WHERE persona_id = $1',
       [personaId]
     );
     return response.rows.length > 0;

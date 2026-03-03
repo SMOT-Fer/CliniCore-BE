@@ -5,10 +5,7 @@ class PersonasModel {
     const response = await db.query(
       `SELECT *
        FROM personas
-       ORDER BY
-         CASE WHEN deleted_at IS NULL THEN 0 ELSE 1 END,
-         created_at DESC,
-         deleted_at DESC NULLS LAST`
+       ORDER BY created_at DESC`
     );
     return response.rows;
   }
@@ -23,7 +20,7 @@ class PersonasModel {
 
   static async obtenerPorId(id) {
     const response = await db.query(
-      'SELECT * FROM personas WHERE id = $1 AND deleted_at IS NULL',
+      'SELECT * FROM personas WHERE id = $1',
       [id]
     );
     return response.rows[0] || null;
@@ -31,7 +28,7 @@ class PersonasModel {
 
   static async obtenerPorDni(dni) {
     const response = await db.query(
-      'SELECT * FROM personas WHERE dni = $1 AND deleted_at IS NULL',
+      'SELECT * FROM personas WHERE dni = $1',
       [dni]
     );
     return response.rows[0] || null;
@@ -73,37 +70,9 @@ class PersonasModel {
     valores.push(id);
 
     const response = await db.query(
-      `UPDATE personas SET ${setClause} WHERE id = $${valores.length} AND deleted_at IS NULL
+      `UPDATE personas SET ${setClause} WHERE id = $${valores.length}
        RETURNING *`,
       valores
-    );
-
-    return response.rows[0] || null;
-  }
-
-  /**
-   * Soft delete: marca persona como eliminada pero mantiene datos
-   * Para auditoría y cumplimiento legal
-   */
-  static async softDelete(id, deletedByUserId) {
-    const response = await db.query(
-      `UPDATE personas
-       SET deleted_at = NOW(), deleted_by = $2
-       WHERE id = $1 AND deleted_at IS NULL
-       RETURNING id`,
-      [id, deletedByUserId]
-    );
-
-    return response.rows.length > 0;
-  }
-
-  static async reactivar(id) {
-    const response = await db.query(
-      `UPDATE personas
-       SET deleted_at = NULL, deleted_by = NULL
-       WHERE id = $1 AND deleted_at IS NOT NULL
-       RETURNING *`,
-      [id]
     );
 
     return response.rows[0] || null;
@@ -120,7 +89,7 @@ class PersonasModel {
 
   static async existeDni(dni) {
     const response = await db.query(
-      'SELECT id FROM personas WHERE dni = $1 AND deleted_at IS NULL',
+      'SELECT id FROM personas WHERE dni = $1',
       [dni]
     );
     return response.rows.length > 0;

@@ -4,6 +4,7 @@ const RefreshTokensModel = require('../models/refresh_tokens.model');
 const { hashPassword, comparePassword } = require('../utils/password');
 const { generarAccessToken, generarRefreshToken, verificarRefreshToken } = require('../utils/jwt');
 const { hashToken } = require('../utils/token-hash');
+const SuscripcionesModel = require('../models/suscripciones.model');
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -165,6 +166,29 @@ class UsuariosController {
 
       if (rol !== 'SUPERADMIN' && !empresa_id) {
         return res.status(400).json({ success: false, error: 'empresa_id es obligatorio para roles ADMIN, DOCTOR y STAFF' });
+      }
+
+      if (rol !== 'SUPERADMIN') {
+        const cupo = await SuscripcionesModel.validarCupoUsuarios(empresa_id);
+        if (!cupo.permitido) {
+          if (cupo.razon === 'SIN_SUSCRIPCION') {
+            return res.status(402).json({
+              success: false,
+              error: 'La clínica no tiene una suscripción activa',
+              code: 'SUSCRIPCION_REQUERIDA'
+            });
+          }
+
+          return res.status(409).json({
+            success: false,
+            error: 'Se alcanzó el límite de usuarios activos del plan',
+            code: 'LIMITE_PLAN_USUARIOS',
+            data: {
+              limite: cupo.limite,
+              usados: cupo.usados
+            }
+          });
+        }
       }
 
       if (req.user?.rol === 'ADMIN') {
@@ -409,6 +433,19 @@ class UsuariosController {
 
       const usuarioConLogin = await UsuariosModel.actualizarUltimoLogin(usuario.id);
       const contextoEmpresa = await UsuariosModel.obtenerContextoEmpresa(usuarioConLogin.id);
+
+      let suscripcion = null;
+      if (usuarioConLogin.rol !== 'SUPERADMIN') {
+        suscripcion = await SuscripcionesModel.obtenerVigentePorEmpresa(usuarioConLogin.empresa_id);
+        if (!suscripcion) {
+          return res.status(402).json({
+            success: false,
+            error: 'Tu clínica no tiene una suscripción activa',
+            code: 'SUSCRIPCION_REQUERIDA'
+          });
+        }
+      }
+
       const redirectPath = construirRedirectPath(usuarioConLogin, contextoEmpresa);
 
       if (!redirectPath) {
@@ -449,6 +486,7 @@ class UsuariosController {
             tipo_negocio_codigo: contextoEmpresa.tipo_negocio_codigo,
             tipo_negocio_nombre: contextoEmpresa.tipo_negocio_nombre
           } : null,
+          suscripcion,
           redirect_path: redirectPath
         }
       });

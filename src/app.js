@@ -13,6 +13,7 @@ const tiposNegocioRoutes = require('./routes/tipos-negocio');
 const usuariosRoutes = require('./routes/usuarios');
 const adminRoutes = require('./routes/admin');
 const auditLogsRoutes = require('./routes/audit-logs');
+const platformRoutes = require('./routes/platform');
 const errorHandler = require('./middlewares/error-handler');
 const csrfMiddleware = require('./middlewares/csrf');
 const requestLogger = require('./middlewares/request-logger');
@@ -145,6 +146,7 @@ app.use('/api/tipos-negocio', tiposNegocioRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/audit-logs', auditLogsRoutes);
+app.use('/api/platform', platformRoutes);
 
 app.use('/api', (req, res) => {
   res.status(404).json({

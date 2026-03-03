@@ -3,12 +3,11 @@ const app = require('./app');
 const db = require('./config/db');
 const runtimeState = require('./config/runtime-state');
 const logger = require('./utils/logger');
+const { runMigrations } = require('./db/migrate');
 
 const port = process.env.PORT || 3000;
 
-const server = app.listen(port, () => {
-    logger.info('Servidor iniciado', { port });
-});
+let server;
 
 let isShuttingDown = false;
 
@@ -46,3 +45,18 @@ async function shutdown(signal) {
 
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+async function start() {
+    try {
+        await runMigrations();
+
+        server = app.listen(port, () => {
+            logger.info('Servidor iniciado', { port });
+        });
+    } catch (error) {
+        logger.error('No se pudo iniciar la aplicación', { message: error.message });
+        process.exit(1);
+    }
+}
+
+start();
