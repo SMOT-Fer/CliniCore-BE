@@ -67,7 +67,27 @@ CREATE TABLE IF NOT EXISTS usuarios (
   CONSTRAINT uq_usuarios_email UNIQUE (email)
 );
 
-CREATE INDEX IF NOT EXISTS idx_usuarios_empresa_id ON usuarios(empresa_id);
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'usuarios'
+      AND column_name = 'empresa_id'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_usuarios_empresa_id ON usuarios(empresa_id);
+  ELSIF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'usuarios'
+      AND column_name = 'clinica_id'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_usuarios_clinica_id ON usuarios(clinica_id);
+  END IF;
+END
+$$;
 CREATE INDEX IF NOT EXISTS idx_usuarios_persona_id ON usuarios(persona_id);
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (
@@ -99,8 +119,21 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_operacion ON audit_log(operacion);
 CREATE INDEX IF NOT EXISTS idx_audit_log_registro ON audit_log(registro_id);
 CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at DESC);
 
-INSERT INTO tipos_negocio (codigo, nombre)
-SELECT 'CLINICA', 'Clínica'
-WHERE NOT EXISTS (
-  SELECT 1 FROM tipos_negocio WHERE UPPER(codigo) = 'CLINICA'
-);
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname = 'tipos_negocio'
+      AND c.relkind = 'r'
+  ) THEN
+    INSERT INTO tipos_negocio (codigo, nombre)
+    SELECT 'CLINICA', 'Clinica'
+    WHERE NOT EXISTS (
+      SELECT 1 FROM tipos_negocio WHERE UPPER(codigo) = 'CLINICA'
+    );
+  END IF;
+END
+$$;

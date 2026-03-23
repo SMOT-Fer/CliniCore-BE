@@ -10,8 +10,8 @@ class RefreshTokensModel {
               rt.created_at,
               u.email,
               u.rol,
-              u.empresa_id,
-              u.empresa_id AS clinica_id
+              u.clinica_id,
+              u.clinica_id AS empresa_id
        FROM refresh_tokens rt
        JOIN usuarios u ON u.id = rt.usuario_id
        WHERE rt.revoked_at IS NULL

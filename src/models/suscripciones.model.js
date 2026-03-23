@@ -7,7 +7,7 @@ class SuscripcionesModel {
 
     if (empresaId) {
       params.push(empresaId);
-      where += ` AND se.empresa_id = $${params.length}`;
+      where += ` AND se.clinica_id = $${params.length}`;
     }
 
     if (suscripcionId) {
@@ -39,7 +39,7 @@ class SuscripcionesModel {
 
     if (empresaId) {
       params.push(empresaId);
-      where += ` AND upm.empresa_id = $${params.length}`;
+      where += ` AND upm.clinica_id = $${params.length}`;
     }
 
     if (periodo) {
@@ -55,7 +55,7 @@ class SuscripcionesModel {
     const response = await db.query(
       `SELECT upm.*, e.nombre AS empresa_nombre
        FROM uso_plan_mensual upm
-       JOIN empresas e ON e.id = upm.empresa_id
+       JOIN clinicas e ON e.id = upm.clinica_id
        ${where}
        ORDER BY upm.periodo_yyyymm DESC, upm.updated_at DESC
        LIMIT $${limitPos}
@@ -70,7 +70,7 @@ class SuscripcionesModel {
     const response = await db.query(
       `SELECT *
        FROM v_suscripcion_vigente
-       WHERE empresa_id = $1
+       WHERE clinica_id = $1
        ORDER BY periodo_actual_fin DESC
        LIMIT 1`,
       [empresaId]
@@ -86,7 +86,7 @@ class SuscripcionesModel {
          e.nombre AS empresa_nombre,
          e.ruc AS empresa_ruc
        FROM v_suscripcion_vigente v
-       JOIN empresas e ON e.id = v.empresa_id
+       JOIN clinicas e ON e.id = v.clinica_id
        ORDER BY v.periodo_actual_fin ASC`
     );
 
@@ -102,9 +102,9 @@ class SuscripcionesModel {
          p.precio_mensual,
          p.precio_anual,
          p.moneda
-       FROM suscripciones_empresa se
+       FROM suscripciones_clinica se
        JOIN planes_saas p ON p.id = se.plan_id
-       WHERE se.empresa_id = $1
+       WHERE se.clinica_id = $1
        ORDER BY se.created_at DESC`,
       [empresaId]
     );
@@ -121,14 +121,14 @@ class SuscripcionesModel {
           LIMIT 1
         ), activa AS (
           SELECT 1
-          FROM suscripciones_empresa
-          WHERE empresa_id = $1
+          FROM suscripciones_clinica
+          WHERE clinica_id = $1
             AND estado IN ('TRIAL', 'ACTIVA', 'PAST_DUE')
             AND NOW() <= periodo_actual_fin
           LIMIT 1
         )
-        INSERT INTO suscripciones_empresa (
-          empresa_id,
+        INSERT INTO suscripciones_clinica (
+          clinica_id,
           plan_id,
           estado,
           periodo_actual_inicio,
@@ -172,20 +172,20 @@ class SuscripcionesModel {
       await client.query('BEGIN');
 
       await client.query(
-        `UPDATE suscripciones_empresa
+        `UPDATE suscripciones_clinica
          SET estado = 'CANCELADA',
              cancelled_at = NOW(),
              updated_at = NOW(),
              updated_by = $2
-         WHERE empresa_id = $1
+         WHERE clinica_id = $1
            AND estado IN ('TRIAL', 'ACTIVA', 'PAST_DUE')
            AND NOW() <= periodo_actual_fin`,
         [empresaId, actorUserId]
       );
 
       const inserted = await client.query(
-        `INSERT INTO suscripciones_empresa (
-           empresa_id,
+        `INSERT INTO suscripciones_clinica (
+           clinica_id,
            plan_id,
            estado,
            periodo_actual_inicio,
@@ -213,7 +213,7 @@ class SuscripcionesModel {
       await client.query(
         `INSERT INTO suscripcion_eventos (
            suscripcion_id,
-           empresa_id,
+           clinica_id,
            evento,
            estado_anterior,
            estado_nuevo,
@@ -243,7 +243,7 @@ class SuscripcionesModel {
     const response = await db.query(
       `SELECT COUNT(*)::int AS total
        FROM usuarios
-       WHERE empresa_id = $1
+       WHERE clinica_id = $1
          AND deleted_at IS NULL
          AND estado = 'ACTIVO'`,
       [empresaId]

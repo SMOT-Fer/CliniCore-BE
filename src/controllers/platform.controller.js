@@ -97,7 +97,7 @@ class PlatformController {
     try {
       const limit = Math.min(Number(req.query?.limit || 100), 500);
       const offset = Number(req.query?.offset || 0);
-      const empresaId = req.query?.empresa_id || null;
+      const empresaId = req.query?.clinica_id || null;
       const suscripcionId = req.query?.suscripcion_id || null;
 
       const eventos = await SuscripcionesModel.listarEventos({
@@ -118,7 +118,7 @@ class PlatformController {
     try {
       const limit = Math.min(Number(req.query?.limit || 100), 500);
       const offset = Number(req.query?.offset || 0);
-      const empresaId = req.query?.empresa_id || null;
+      const empresaId = req.query?.clinica_id || null;
       const periodo = req.query?.periodo_yyyymm || null;
 
       const uso = await SuscripcionesModel.listarUsoMensual({
@@ -137,10 +137,10 @@ class PlatformController {
 
   static async asignarPlanEmpresa(req, res) {
     try {
-      const { empresa_id, plan_id, estado, duracion_dias } = req.body;
+      const { clinica_id, plan_id, estado, duracion_dias } = req.body;
 
-      if (!empresa_id || !plan_id) {
-        return res.status(400).json({ success: false, error: 'empresa_id y plan_id son obligatorios' });
+      if (!clinica_id || !plan_id) {
+        return res.status(400).json({ success: false, error: 'clinica_id y plan_id son obligatorios' });
       }
 
       const plan = await PlanesSaasModel.obtenerPorId(plan_id);
@@ -149,7 +149,7 @@ class PlatformController {
       }
 
       const suscripcion = await SuscripcionesModel.asignarPlanEmpresa({
-        empresaId: empresa_id,
+        empresaId: clinica_id,
         planId: plan_id,
         estadoInicial: estado || 'ACTIVA',
         duracionDias: Number(duracion_dias || 30),
@@ -175,7 +175,7 @@ class PlatformController {
         });
       }
 
-      const empresaId = req.user?.empresa_id ?? req.user?.clinica_id;
+      const empresaId = req.user?.clinica_id ?? req.user?.empresa_id;
       if (!empresaId) {
         return res.status(400).json({ success: false, error: 'Usuario sin empresa asignada' });
       }

@@ -40,7 +40,7 @@ function asegurarCsrfCookie(req, res) {
 }
 
 function obtenerEmpresaId(input = {}) {
-  return input.empresa_id ?? input.clinica_id ?? null;
+  return input.clinica_id ?? input.empresa_id ?? null;
 }
 
 function toSlug(value) {
@@ -57,7 +57,7 @@ function construirRedirectPath(usuario, contextoEmpresa) {
   if (!contextoEmpresa?.id) return null;
 
   const nombreSlug = toSlug(contextoEmpresa.nombre || contextoEmpresa.id);
-  return `/empresa/${nombreSlug}`;
+  return `/clinica/${nombreSlug}`;
 }
 
 class UsuariosController {
@@ -74,21 +74,24 @@ class UsuariosController {
       const redirectPath = construirRedirectPath(usuario, contextoEmpresa);
 
       if (!redirectPath) {
-        return res.status(403).json({ success: false, error: 'Usuario sin empresa asignada o sin ruta de acceso válida' });
+        return res.status(403).json({ success: false, error: 'Usuario sin clinica asignada o sin ruta de acceso valida' });
       }
+
+      const clinica = contextoEmpresa ? {
+        id: contextoEmpresa.id,
+        nombre: contextoEmpresa.nombre,
+        estado: contextoEmpresa.estado,
+        tipo_negocio_id: contextoEmpresa.tipo_negocio_id,
+        tipo_negocio_codigo: contextoEmpresa.tipo_negocio_codigo,
+        tipo_negocio_nombre: contextoEmpresa.tipo_negocio_nombre
+      } : null;
 
       return res.json({
         success: true,
         data: {
           ...usuario,
-          empresa: contextoEmpresa ? {
-            id: contextoEmpresa.id,
-            nombre: contextoEmpresa.nombre,
-            estado: contextoEmpresa.estado,
-            tipo_negocio_id: contextoEmpresa.tipo_negocio_id,
-            tipo_negocio_codigo: contextoEmpresa.tipo_negocio_codigo,
-            tipo_negocio_nombre: contextoEmpresa.tipo_negocio_nombre
-          } : null,
+          clinica,
+          empresa: clinica,
           redirect_path: redirectPath
         }
       });
@@ -101,10 +104,10 @@ class UsuariosController {
   static async obtenerTodos(req, res) {
     try {
       const usuarios = await UsuariosModel.obtenerTodos();
-      const empresaIdUsuario = req.user?.empresa_id ?? req.user?.clinica_id;
+      const empresaIdUsuario = req.user?.clinica_id ?? req.user?.empresa_id;
 
       if (req.user?.rol === 'ADMIN') {
-        const propios = usuarios.filter(u => u.empresa_id === empresaIdUsuario);
+        const propios = usuarios.filter(u => u.clinica_id === empresaIdUsuario);
         return res.json({ success: true, data: propios, count: propios.length });
       }
 
@@ -124,8 +127,8 @@ class UsuariosController {
         return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
       }
 
-      const empresaIdUsuario = req.user?.empresa_id ?? req.user?.clinica_id;
-      if (req.user?.rol === 'ADMIN' && usuario.empresa_id !== empresaIdUsuario) {
+      const empresaIdUsuario = req.user?.clinica_id ?? req.user?.empresa_id;
+      if (req.user?.rol === 'ADMIN' && usuario.clinica_id !== empresaIdUsuario) {
         return res.status(403).json({ success: false, error: 'No autorizado para este usuario' });
       }
 
@@ -142,7 +145,7 @@ class UsuariosController {
 
   static async crear(req, res) {
     try {
-      const empresa_id = obtenerEmpresaId(req.body);
+      const clinica_id = obtenerEmpresaId(req.body);
       const { persona_id, email, password, rol, estado } = req.body;
 
       if (!persona_id || !email || !password || !rol) {
@@ -164,12 +167,12 @@ class UsuariosController {
         return res.status(403).json({ success: false, error: 'No está permitido crear usuarios SUPERADMIN desde este módulo' });
       }
 
-      if (rol !== 'SUPERADMIN' && !empresa_id) {
-        return res.status(400).json({ success: false, error: 'empresa_id es obligatorio para roles ADMIN, DOCTOR y STAFF' });
+      if (rol !== 'SUPERADMIN' && !clinica_id) {
+        return res.status(400).json({ success: false, error: 'clinica_id es obligatorio para roles ADMIN, DOCTOR y STAFF' });
       }
 
       if (rol !== 'SUPERADMIN') {
-        const cupo = await SuscripcionesModel.validarCupoUsuarios(empresa_id);
+        const cupo = await SuscripcionesModel.validarCupoUsuarios(clinica_id);
         if (!cupo.permitido) {
           if (cupo.razon === 'SIN_SUSCRIPCION') {
             return res.status(402).json({
@@ -192,12 +195,12 @@ class UsuariosController {
       }
 
       if (req.user?.rol === 'ADMIN') {
-        const empresaIdUsuario = req.user?.empresa_id ?? req.user?.clinica_id;
+        const empresaIdUsuario = req.user?.clinica_id ?? req.user?.empresa_id;
         if (rol === 'SUPERADMIN' || rol === 'ADMIN') {
           return res.status(403).json({ success: false, error: 'ADMIN no puede crear usuarios ADMIN o SUPERADMIN' });
         }
 
-        if (empresa_id !== empresaIdUsuario) {
+        if (clinica_id !== empresaIdUsuario) {
           return res.status(403).json({ success: false, error: 'ADMIN solo puede crear usuarios en su empresa' });
         }
       }
@@ -216,7 +219,7 @@ class UsuariosController {
       const passwordHash = await hashPassword(password);
 
       const usuario = await UsuariosModel.crear({
-        empresa_id: rol === 'SUPERADMIN' ? null : empresa_id,
+        clinica_id: rol === 'SUPERADMIN' ? null : clinica_id,
         persona_id,
         email: emailNormalizado,
         password_hash: passwordHash,
@@ -241,8 +244,8 @@ class UsuariosController {
       }
 
       if (req.user?.rol === 'ADMIN') {
-        const empresaIdUsuario = req.user?.empresa_id ?? req.user?.clinica_id;
-        if (usuarioActual.empresa_id !== empresaIdUsuario) {
+        const empresaIdUsuario = req.user?.clinica_id ?? req.user?.empresa_id;
+        if (usuarioActual.clinica_id !== empresaIdUsuario) {
           return res.status(403).json({ success: false, error: 'ADMIN solo puede editar usuarios de su empresa' });
         }
       }
@@ -274,10 +277,10 @@ class UsuariosController {
         }
       }
 
-      const empresa_id = obtenerEmpresaId(req.body);
+      const clinica_id = obtenerEmpresaId(req.body);
 
       const payload = {
-        empresa_id,
+        clinica_id,
         persona_id: req.body.persona_id,
         email: req.body.email ? normalizarEmail(req.body.email) : undefined,
         rol: req.body.rol,
@@ -285,19 +288,19 @@ class UsuariosController {
       };
 
       const rolFinal = req.body.rol || usuarioActual.rol;
-      const empresaFinal = empresa_id !== null && empresa_id !== undefined ? empresa_id : usuarioActual.empresa_id;
+      const empresaFinal = clinica_id !== null && clinica_id !== undefined ? clinica_id : usuarioActual.clinica_id;
 
       if (req.user?.rol === 'ADMIN') {
-        const empresaIdUsuario = req.user?.empresa_id ?? req.user?.clinica_id;
+        const empresaIdUsuario = req.user?.clinica_id ?? req.user?.empresa_id;
         if (empresaFinal !== empresaIdUsuario) {
           return res.status(403).json({ success: false, error: 'ADMIN no puede mover usuarios fuera de su empresa' });
         }
       }
 
       if (rolFinal === 'SUPERADMIN') {
-        payload.empresa_id = null;
+        payload.clinica_id = null;
       } else if (!empresaFinal) {
-        return res.status(400).json({ success: false, error: 'empresa_id es obligatorio para roles ADMIN, DOCTOR y STAFF' });
+        return res.status(400).json({ success: false, error: 'clinica_id es obligatorio para roles ADMIN, DOCTOR y STAFF' });
       }
 
       if (req.body.password !== undefined) {
@@ -329,8 +332,8 @@ class UsuariosController {
       }
 
       if (req.user?.rol === 'ADMIN') {
-        const empresaIdUsuario = req.user?.empresa_id ?? req.user?.clinica_id;
-        if (usuario.empresa_id !== empresaIdUsuario) {
+        const empresaIdUsuario = req.user?.clinica_id ?? req.user?.empresa_id;
+        if (usuario.clinica_id !== empresaIdUsuario) {
           return res.status(403).json({ success: false, error: 'ADMIN solo puede eliminar usuarios de su empresa' });
         }
 
@@ -362,8 +365,8 @@ class UsuariosController {
       }
 
       if (req.user?.rol === 'ADMIN') {
-        const empresaIdUsuario = req.user?.empresa_id ?? req.user?.clinica_id;
-        if (usuario.empresa_id !== empresaIdUsuario) {
+        const empresaIdUsuario = req.user?.clinica_id ?? req.user?.empresa_id;
+        if (usuario.clinica_id !== empresaIdUsuario) {
           return res.status(403).json({ success: false, error: 'ADMIN solo puede desactivar usuarios de su empresa' });
         }
 
@@ -390,8 +393,8 @@ class UsuariosController {
       }
 
       if (req.user?.rol === 'ADMIN') {
-        const empresaIdUsuario = req.user?.empresa_id ?? req.user?.clinica_id;
-        if (usuario.empresa_id !== empresaIdUsuario) {
+        const empresaIdUsuario = req.user?.clinica_id ?? req.user?.empresa_id;
+        if (usuario.clinica_id !== empresaIdUsuario) {
           return res.status(403).json({ success: false, error: 'ADMIN solo puede reactivar usuarios de su empresa' });
         }
 
@@ -436,7 +439,7 @@ class UsuariosController {
 
       let suscripcion = null;
       if (usuarioConLogin.rol !== 'SUPERADMIN') {
-        suscripcion = await SuscripcionesModel.obtenerVigentePorEmpresa(usuarioConLogin.empresa_id);
+        suscripcion = await SuscripcionesModel.obtenerVigentePorEmpresa(usuarioConLogin.clinica_id);
         if (!suscripcion) {
           return res.status(402).json({
             success: false,
@@ -449,8 +452,17 @@ class UsuariosController {
       const redirectPath = construirRedirectPath(usuarioConLogin, contextoEmpresa);
 
       if (!redirectPath) {
-        return res.status(403).json({ success: false, error: 'Usuario sin empresa asignada o sin ruta de acceso válida' });
+        return res.status(403).json({ success: false, error: 'Usuario sin clinica asignada o sin ruta de acceso valida' });
       }
+
+      const clinica = contextoEmpresa ? {
+        id: contextoEmpresa.id,
+        nombre: contextoEmpresa.nombre,
+        estado: contextoEmpresa.estado,
+        tipo_negocio_id: contextoEmpresa.tipo_negocio_id,
+        tipo_negocio_codigo: contextoEmpresa.tipo_negocio_codigo,
+        tipo_negocio_nombre: contextoEmpresa.tipo_negocio_nombre
+      } : null;
       const refreshToken = generarRefreshToken(usuarioConLogin);
       const refreshTokenHash = hashToken(refreshToken);
       const refreshExpira = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -478,14 +490,8 @@ class UsuariosController {
         data: {
           ...usuarioConLogin,
           sessionId: nuevaSesion.id,
-          empresa: contextoEmpresa ? {
-            id: contextoEmpresa.id,
-            nombre: contextoEmpresa.nombre,
-            estado: contextoEmpresa.estado,
-            tipo_negocio_id: contextoEmpresa.tipo_negocio_id,
-            tipo_negocio_codigo: contextoEmpresa.tipo_negocio_codigo,
-            tipo_negocio_nombre: contextoEmpresa.tipo_negocio_nombre
-          } : null,
+          clinica,
+          empresa: clinica,
           suscripcion,
           redirect_path: redirectPath
         }

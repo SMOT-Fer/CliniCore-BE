@@ -20,19 +20,45 @@ ALTER TABLE IF EXISTS personas
   DROP COLUMN IF EXISTS deleted_at,
   DROP COLUMN IF EXISTS deleted_by;
 
-ALTER TABLE IF EXISTS tipos_negocio
-  DROP COLUMN IF EXISTS deleted_at,
-  DROP COLUMN IF EXISTS deleted_by;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname = 'tipos_negocio'
+      AND c.relkind = 'r'
+  ) THEN
+    ALTER TABLE tipos_negocio
+      DROP COLUMN IF EXISTS deleted_at,
+      DROP COLUMN IF EXISTS deleted_by;
 
-ALTER TABLE IF EXISTS tipos_negocio
-  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+    ALTER TABLE tipos_negocio
+      ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+  END IF;
+END
+$$;
 
-ALTER TABLE IF EXISTS empresas
-  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS deleted_by UUID;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname = 'empresas'
+      AND c.relkind = 'r'
+  ) THEN
+    ALTER TABLE empresas
+      ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS deleted_by UUID;
+  END IF;
+END
+$$;
 
 ALTER TABLE IF EXISTS usuarios
   ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -115,13 +141,39 @@ CREATE TABLE IF NOT EXISTS suscripciones_empresa (
   CONSTRAINT chk_periodo_suscripcion_valido CHECK (periodo_actual_fin > periodo_actual_inicio)
 );
 
-CREATE INDEX IF NOT EXISTS idx_suscripciones_empresa_empresa_id ON suscripciones_empresa(empresa_id);
-CREATE INDEX IF NOT EXISTS idx_suscripciones_empresa_estado ON suscripciones_empresa(estado);
-CREATE INDEX IF NOT EXISTS idx_suscripciones_empresa_fin ON suscripciones_empresa(periodo_actual_fin);
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname = 'suscripciones_empresa'
+      AND c.relkind = 'r'
+  ) THEN
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'suscripciones_empresa' AND column_name = 'empresa_id'
+    ) THEN
+      CREATE INDEX IF NOT EXISTS idx_suscripciones_empresa_empresa_id ON suscripciones_empresa(empresa_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_suscripcion_activa_por_empresa
+      ON suscripciones_empresa (empresa_id)
+      WHERE estado IN ('TRIAL', 'ACTIVA', 'PAST_DUE');
+    ELSIF EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'suscripciones_empresa' AND column_name = 'clinica_id'
+    ) THEN
+      CREATE INDEX IF NOT EXISTS idx_suscripciones_empresa_clinica_id ON suscripciones_empresa(clinica_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_suscripcion_activa_por_clinica
+      ON suscripciones_empresa (clinica_id)
+      WHERE estado IN ('TRIAL', 'ACTIVA', 'PAST_DUE');
+    END IF;
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_suscripcion_activa_por_empresa
-ON suscripciones_empresa (empresa_id)
-WHERE estado IN ('TRIAL', 'ACTIVA', 'PAST_DUE');
+    CREATE INDEX IF NOT EXISTS idx_suscripciones_empresa_estado ON suscripciones_empresa(estado);
+    CREATE INDEX IF NOT EXISTS idx_suscripciones_empresa_fin ON suscripciones_empresa(periodo_actual_fin);
+  END IF;
+END
+$$;
 
 CREATE TABLE IF NOT EXISTS suscripcion_eventos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -136,7 +188,21 @@ CREATE TABLE IF NOT EXISTS suscripcion_eventos (
 );
 
 CREATE INDEX IF NOT EXISTS idx_suscripcion_eventos_suscripcion_id ON suscripcion_eventos(suscripcion_id);
-CREATE INDEX IF NOT EXISTS idx_suscripcion_eventos_empresa_id ON suscripcion_eventos(empresa_id);
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'suscripcion_eventos' AND column_name = 'empresa_id'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_suscripcion_eventos_empresa_id ON suscripcion_eventos(empresa_id);
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'suscripcion_eventos' AND column_name = 'clinica_id'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_suscripcion_eventos_clinica_id ON suscripcion_eventos(clinica_id);
+  END IF;
+END
+$$;
 CREATE INDEX IF NOT EXISTS idx_suscripcion_eventos_created_at ON suscripcion_eventos(created_at DESC);
 
 CREATE TABLE IF NOT EXISTS uso_plan_mensual (
@@ -151,7 +217,21 @@ CREATE TABLE IF NOT EXISTS uso_plan_mensual (
   CONSTRAINT uq_uso_plan_mensual UNIQUE (empresa_id, periodo_yyyymm)
 );
 
-CREATE INDEX IF NOT EXISTS idx_uso_plan_mensual_empresa_periodo ON uso_plan_mensual(empresa_id, periodo_yyyymm DESC);
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'uso_plan_mensual' AND column_name = 'empresa_id'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_uso_plan_mensual_empresa_periodo ON uso_plan_mensual(empresa_id, periodo_yyyymm DESC);
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'uso_plan_mensual' AND column_name = 'clinica_id'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_uso_plan_mensual_clinica_periodo ON uso_plan_mensual(clinica_id, periodo_yyyymm DESC);
+  END IF;
+END
+$$;
 
 INSERT INTO planes_saas (
   codigo,
@@ -192,58 +272,85 @@ ON CONFLICT (codigo) DO UPDATE SET
   estado = EXCLUDED.estado,
   updated_at = NOW();
 
-CREATE OR REPLACE VIEW v_suscripcion_vigente AS
-SELECT
-  se.id AS suscripcion_id,
-  se.empresa_id,
-  se.plan_id,
-  se.estado AS suscripcion_estado,
-  se.periodo_actual_inicio,
-  se.periodo_actual_fin,
-  se.trial_ends_at,
-  p.codigo AS plan_codigo,
-  p.nombre AS plan_nombre,
-  p.precio_mensual,
-  p.precio_anual,
-  p.moneda,
-  p.max_usuarios,
-  p.max_pacientes_activos,
-  p.max_storage_gb,
-  p.incluye_facturacion_electronica,
-  p.incluye_historia_clinica_avanzada,
-  p.incluye_integraciones,
-  p.incluye_api
-FROM suscripciones_empresa se
-JOIN planes_saas p ON p.id = se.plan_id
-WHERE se.estado IN ('TRIAL', 'ACTIVA', 'PAST_DUE')
-  AND NOW() <= se.periodo_actual_fin;
+DO $$
+BEGIN
+  IF to_regclass('public.v_suscripcion_vigente') IS NULL THEN
+    EXECUTE $view$
+      CREATE VIEW v_suscripcion_vigente AS
+      SELECT
+        se.id AS suscripcion_id,
+        se.empresa_id,
+        se.plan_id,
+        se.estado AS suscripcion_estado,
+        se.periodo_actual_inicio,
+        se.periodo_actual_fin,
+        se.trial_ends_at,
+        p.codigo AS plan_codigo,
+        p.nombre AS plan_nombre,
+        p.precio_mensual,
+        p.precio_anual,
+        p.moneda,
+        p.max_usuarios,
+        p.max_pacientes_activos,
+        p.max_storage_gb,
+        p.incluye_facturacion_electronica,
+        p.incluye_historia_clinica_avanzada,
+        p.incluye_integraciones,
+        p.incluye_api
+      FROM suscripciones_empresa se
+      JOIN planes_saas p ON p.id = se.plan_id
+      WHERE se.estado IN ('TRIAL', 'ACTIVA', 'PAST_DUE')
+        AND NOW() <= se.periodo_actual_fin
+    $view$;
+  END IF;
+END
+$$;
 
-INSERT INTO suscripciones_empresa (
-  empresa_id,
-  plan_id,
-  estado,
-  periodo_actual_inicio,
-  periodo_actual_fin,
-  trial_ends_at,
-  created_at,
-  updated_at
-)
-SELECT
-  e.id,
-  p.id,
-  'TRIAL',
-  NOW(),
-  NOW() + INTERVAL '14 days',
-  NOW() + INTERVAL '14 days',
-  NOW(),
-  NOW()
-FROM empresas e
-JOIN planes_saas p ON p.codigo = 'TRIAL_CLINICA'
-WHERE e.deleted_at IS NULL
-  AND NOT EXISTS (
+DO $$
+BEGIN
+  IF EXISTS (
     SELECT 1
-    FROM suscripciones_empresa se
-    WHERE se.empresa_id = e.id
-      AND se.estado IN ('TRIAL', 'ACTIVA', 'PAST_DUE')
-      AND NOW() <= se.periodo_actual_fin
-  );
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname = 'suscripciones_empresa'
+      AND c.relkind = 'r'
+  ) AND EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'suscripciones_empresa'
+      AND column_name = 'empresa_id'
+  ) THEN
+    INSERT INTO suscripciones_empresa (
+      empresa_id,
+      plan_id,
+      estado,
+      periodo_actual_inicio,
+      periodo_actual_fin,
+      trial_ends_at,
+      created_at,
+      updated_at
+    )
+    SELECT
+      e.id,
+      p.id,
+      'TRIAL',
+      NOW(),
+      NOW() + INTERVAL '14 days',
+      NOW() + INTERVAL '14 days',
+      NOW(),
+      NOW()
+    FROM empresas e
+    JOIN planes_saas p ON p.codigo = 'TRIAL_CLINICA'
+    WHERE e.deleted_at IS NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM suscripciones_empresa se
+        WHERE se.empresa_id = e.id
+          AND se.estado IN ('TRIAL', 'ACTIVA', 'PAST_DUE')
+          AND NOW() <= se.periodo_actual_fin
+      );
+  END IF;
+END
+$$;

@@ -15,7 +15,7 @@ class EmpresasController {
   static async obtenerTodas(req, res) {
     try {
       const empresas = await EmpresasModel.obtenerTodas();
-      const empresaIdUsuario = req.user?.empresa_id ?? req.user?.clinica_id;
+      const empresaIdUsuario = req.user?.clinica_id ?? req.user?.empresa_id;
 
       if (req.user?.rol === 'ADMIN') {
         const propias = empresas.filter(c => c.id === empresaIdUsuario && c.deleted_at === null);
@@ -38,7 +38,7 @@ class EmpresasController {
         return res.status(404).json({ success: false, error: 'Empresa no encontrada' });
       }
 
-      const empresaIdUsuario = req.user?.empresa_id ?? req.user?.clinica_id;
+      const empresaIdUsuario = req.user?.clinica_id ?? req.user?.empresa_id;
       if (req.user?.rol === 'ADMIN' && empresa.id !== empresaIdUsuario) {
         return res.status(403).json({ success: false, error: 'No autorizado para esta empresa' });
       }
@@ -95,7 +95,7 @@ class EmpresasController {
       }
 
       if (req.user?.rol === 'ADMIN') {
-        const empresaIdUsuario = req.user?.empresa_id ?? req.user?.clinica_id;
+        const empresaIdUsuario = req.user?.clinica_id ?? req.user?.empresa_id;
         if (empresaActual.id !== empresaIdUsuario) {
           return res.status(403).json({ success: false, error: 'ADMIN solo puede editar su propia empresa' });
         }

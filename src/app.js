@@ -8,12 +8,15 @@ const runtimeState = require('./config/runtime-state');
 const swaggerSpec = require('./config/swagger');
 
 const personasRoutes = require('./routes/personas');
-const empresasRoutes = require('./routes/empresas');
+const clinicasRoutes = require('./routes/empresas');
 const tiposNegocioRoutes = require('./routes/tipos-negocio');
 const usuariosRoutes = require('./routes/usuarios');
 const adminRoutes = require('./routes/admin');
 const auditLogsRoutes = require('./routes/audit-logs');
 const platformRoutes = require('./routes/platform');
+const pacientesRoutes = require('./routes/pacientes');
+const citasRoutes = require('./routes/citas');
+const atencionesRoutes = require('./routes/atenciones');
 const errorHandler = require('./middlewares/error-handler');
 const csrfMiddleware = require('./middlewares/csrf');
 const requestLogger = require('./middlewares/request-logger');
@@ -140,13 +143,16 @@ app.get('/superadmin', authenticateToken, authorizeRoles('SUPERADMIN'), (req, re
 app.use('/api', csrfMiddleware);
 app.use('/api', auditContext); // Inyecta contexto de auditoría (user_id)
 app.use('/api/personas', personasRoutes);
-app.use('/api/empresas', empresasRoutes);
-app.use('/api/clinicas', empresasRoutes);
+app.use('/api/clinicas', clinicasRoutes);
+app.use('/api/empresas', clinicasRoutes); // legacy alias
 app.use('/api/tipos-negocio', tiposNegocioRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/audit-logs', auditLogsRoutes);
 app.use('/api/platform', platformRoutes);
+app.use('/api/pacientes', pacientesRoutes);
+app.use('/api/citas', citasRoutes);
+app.use('/api/atenciones', atencionesRoutes);
 
 app.use('/api', (req, res) => {
   res.status(404).json({

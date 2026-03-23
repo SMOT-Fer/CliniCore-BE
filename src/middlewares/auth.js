@@ -58,7 +58,7 @@ async function authenticateToken(req, res, next) {
     const usuarioActualizado = await UsuariosModel.actualizarUltimoLogin(usuario.id);
 
     if (usuarioActualizado.rol !== 'SUPERADMIN') {
-      const empresaId = usuarioActualizado.empresa_id;
+      const empresaId = usuarioActualizado.clinica_id;
 
       if (!empresaId) {
         return res.status(403).json({ success: false, error: 'Usuario sin empresa asignada' });
@@ -81,8 +81,8 @@ async function authenticateToken(req, res, next) {
     req.user = {
       id: usuarioActualizado.id,
       rol: usuarioActualizado.rol,
-      empresa_id: usuarioActualizado.empresa_id,
-      clinica_id: usuarioActualizado.empresa_id
+      clinica_id: usuarioActualizado.clinica_id,
+      empresa_id: usuarioActualizado.clinica_id
     };
 
     next();

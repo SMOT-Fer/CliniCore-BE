@@ -32,7 +32,7 @@ const schemaActualizarPlan = schemaCrearPlan.partial().refine(
 );
 
 const schemaAsignarPlanEmpresa = z.object({
-  empresa_id: z.string().uuid(),
+  clinica_id: z.string().uuid(),
   plan_id: z.string().uuid(),
   estado: estadoSuscripcionEnum.optional(),
   duracion_dias: z.number().int().positive().max(365).optional()

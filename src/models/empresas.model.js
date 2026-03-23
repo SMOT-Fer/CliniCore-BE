@@ -4,7 +4,7 @@ class EmpresasModel {
   static async obtenerActivasPublicas() {
     const response = await db.query(
       `SELECT id, nombre, ruc, estado, direccion, telefono, tipo_negocio_id, created_at
-       FROM empresas
+       FROM clinicas
        WHERE estado = 'ACTIVA' AND deleted_at IS NULL
        ORDER BY nombre ASC`
     );
@@ -14,7 +14,7 @@ class EmpresasModel {
   static async obtenerTodas() {
     const response = await db.query(
       `SELECT *
-       FROM empresas
+       FROM clinicas
        ORDER BY
          CASE WHEN deleted_at IS NULL THEN 0 ELSE 1 END ASC,
          CASE WHEN deleted_at IS NULL THEN created_at END DESC,
@@ -26,7 +26,7 @@ class EmpresasModel {
   static async obtenerPorIdIncluyendoEliminadas(id) {
     const response = await db.query(
       `SELECT *
-       FROM empresas
+       FROM clinicas
        WHERE id = $1`,
       [id]
     );
@@ -36,7 +36,7 @@ class EmpresasModel {
   static async obtenerPorId(id) {
     const response = await db.query(
       `SELECT *
-       FROM empresas
+       FROM clinicas
        WHERE id = $1
          AND deleted_at IS NULL`,
       [id]
@@ -48,7 +48,7 @@ class EmpresasModel {
     const { nombre, ruc, estado, direccion, telefono, tipo_negocio_id } = datos;
 
     const response = await db.query(
-      `INSERT INTO empresas (nombre, ruc, estado, direccion, telefono, tipo_negocio_id)
+      `INSERT INTO clinicas (nombre, ruc, estado, direccion, telefono, tipo_negocio_id)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
       [nombre, ruc || null, estado || 'ACTIVA', direccion || null, telefono || null, tipo_negocio_id]
@@ -80,7 +80,7 @@ class EmpresasModel {
     valores.push(id);
 
     const response = await db.query(
-      `UPDATE empresas
+      `UPDATE clinicas
        SET ${setClause}
        WHERE id = $${valores.length}
        RETURNING *`,
@@ -96,7 +96,7 @@ class EmpresasModel {
    */
   static async softDelete(id, deletedByUserId) {
     const response = await db.query(
-      `UPDATE empresas
+      `UPDATE clinicas
        SET deleted_at = NOW(), deleted_by = $2, estado = 'INACTIVA'
        WHERE id = $1
          AND deleted_at IS NULL
@@ -109,7 +109,7 @@ class EmpresasModel {
 
   static async reactivar(id) {
     const response = await db.query(
-      `UPDATE empresas
+      `UPDATE clinicas
        SET deleted_at = NULL,
            deleted_by = NULL,
            estado = 'ACTIVA'
@@ -126,14 +126,14 @@ class EmpresasModel {
    * ¡NUNCA en producción!
    */
   static async eliminar(id) {
-    await db.query('DELETE FROM empresas WHERE id = $1', [id]);
+    await db.query('DELETE FROM clinicas WHERE id = $1', [id]);
     return true;
   }
 
   static async existeRuc(ruc) {
     const response = await db.query(
       `SELECT id
-       FROM empresas
+       FROM clinicas
        WHERE ruc = $1
          AND deleted_at IS NULL`,
       [ruc]
