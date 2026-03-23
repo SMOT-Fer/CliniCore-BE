@@ -1,6 +1,13 @@
 const db = require('../config/db');
 
 class SuscripcionesModel {
+  static async expirarTrialsVencidos(empresaId = null) {
+    await db.query(
+      'SELECT public.fn_expirar_trials_vencidos($1::uuid)',
+      [empresaId]
+    );
+  }
+
   static async listarEventos({ empresaId = null, suscripcionId = null, limit = 100, offset = 0 } = {}) {
     const params = [];
     let where = 'WHERE 1=1';
@@ -67,6 +74,8 @@ class SuscripcionesModel {
   }
 
   static async obtenerVigentePorEmpresa(empresaId) {
+    await this.expirarTrialsVencidos(empresaId);
+
     const response = await db.query(
       `SELECT *
        FROM v_suscripcion_vigente
@@ -80,6 +89,8 @@ class SuscripcionesModel {
   }
 
   static async listarVigentes() {
+    await this.expirarTrialsVencidos();
+
     const response = await db.query(
       `SELECT
          v.*,
@@ -94,6 +105,8 @@ class SuscripcionesModel {
   }
 
   static async listarHistorialPorEmpresa(empresaId) {
+    await this.expirarTrialsVencidos(empresaId);
+
     const response = await db.query(
       `SELECT
          se.*,
