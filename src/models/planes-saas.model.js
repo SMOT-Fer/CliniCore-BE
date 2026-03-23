@@ -145,6 +145,40 @@ class PlanesSaasModel {
 
     return response.rows[0] || null;
   }
+
+  static async contarSuscripcionesPorPlan(planId) {
+    const response = await db.query(
+      `SELECT COUNT(*)::int AS total
+       FROM suscripciones_clinica
+       WHERE plan_id = $1`,
+      [planId]
+    );
+
+    return Number(response.rows[0]?.total || 0);
+  }
+
+  static async eliminar(id) {
+    const response = await db.query(
+      `DELETE FROM planes_saas
+       WHERE id = $1
+       RETURNING *`,
+      [id]
+    );
+
+    return response.rows[0] || null;
+  }
+
+  static async inactivar(id) {
+    const response = await db.query(
+      `UPDATE planes_saas
+       SET estado = 'INACTIVO', updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [id]
+    );
+
+    return response.rows[0] || null;
+  }
 }
 
 module.exports = PlanesSaasModel;

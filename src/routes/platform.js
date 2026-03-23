@@ -20,6 +20,7 @@ router.get('/mi-suscripcion', PlatformController.miSuscripcion);
 router.get('/planes', authorizeRoles('SUPERADMIN'), PlatformController.listarPlanes);
 router.post('/planes', authorizeRoles('SUPERADMIN'), validateBody(schemaCrearPlan), PlatformController.crearPlan);
 router.put('/planes/:id', authorizeRoles('SUPERADMIN'), validateParams(schemaIdParam), validateBody(schemaActualizarPlan), PlatformController.actualizarPlan);
+router.delete('/planes/:id', authorizeRoles('SUPERADMIN'), validateParams(schemaIdParam), PlatformController.eliminarPlan);
 
 router.get('/suscripciones/vigentes', authorizeRoles('SUPERADMIN'), PlatformController.listarSuscripcionesVigentes);
 router.get('/suscripciones/empresa/:id', authorizeRoles('SUPERADMIN'), validateParams(schemaIdParam), PlatformController.listarHistorialEmpresa);

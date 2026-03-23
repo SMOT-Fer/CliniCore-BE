@@ -72,6 +72,37 @@ class PlatformController {
     }
   }
 
+  static async eliminarPlan(req, res) {
+    try {
+      const { id } = req.params;
+
+      const plan = await PlanesSaasModel.obtenerPorId(id);
+      if (!plan) {
+        return res.status(404).json({ success: false, error: 'Plan no encontrado' });
+      }
+
+      const totalSuscripciones = await PlanesSaasModel.contarSuscripcionesPorPlan(id);
+      if (totalSuscripciones > 0) {
+        const inactivado = await PlanesSaasModel.inactivar(id);
+        return res.json({
+          success: true,
+          data: inactivado,
+          message: 'El plan tiene historial de suscripciones y fue inactivado en lugar de eliminarse.'
+        });
+      }
+
+      const eliminado = await PlanesSaasModel.eliminar(id);
+      return res.json({
+        success: true,
+        data: eliminado,
+        message: 'Plan eliminado correctamente'
+      });
+    } catch (error) {
+      console.error('Error al eliminar plan SaaS:', error);
+      return res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  }
+
   static async listarSuscripcionesVigentes(req, res) {
     try {
       const items = await SuscripcionesModel.listarVigentes();
