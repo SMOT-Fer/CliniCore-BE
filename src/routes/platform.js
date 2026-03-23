@@ -22,7 +22,7 @@ router.post('/planes', authorizeRoles('SUPERADMIN'), validateBody(schemaCrearPla
 router.put('/planes/:id', authorizeRoles('SUPERADMIN'), validateParams(schemaIdParam), validateBody(schemaActualizarPlan), PlatformController.actualizarPlan);
 
 router.get('/suscripciones/vigentes', authorizeRoles('SUPERADMIN'), PlatformController.listarSuscripcionesVigentes);
-router.get('/suscripciones/empresa/:empresaId', authorizeRoles('SUPERADMIN'), validateParams(schemaIdParam), PlatformController.listarHistorialPorEmpresa);
+router.get('/suscripciones/empresa/:id', authorizeRoles('SUPERADMIN'), validateParams(schemaIdParam), PlatformController.listarHistorialEmpresa);
 router.post('/suscripciones/asignar', authorizeRoles('SUPERADMIN'), validateBody(schemaAsignarPlanEmpresa), PlatformController.asignarPlanEmpresa);
 
 module.exports = router;
