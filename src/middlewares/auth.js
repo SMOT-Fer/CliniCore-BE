@@ -64,18 +64,20 @@ async function authenticateToken(req, res, next) {
         return res.status(403).json({ success: false, error: 'Usuario sin empresa asignada' });
       }
 
-      const isPlatformPath = req.originalUrl.startsWith('/api/platform');
       const vigente = await SuscripcionesModel.obtenerVigentePorEmpresa(empresaId);
-
-      if (!vigente && !isPlatformPath) {
+      req.subscription = vigente || null;
+      
+      // Solo bloquear rutas de mutación si no hay suscripción
+      const isMutationPath = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method);
+      const isProtectedMutation = ['/usuarios', '/usuarios/', '/personas', '/empresas'].some(path => req.originalUrl.includes(path));
+      
+      if (!vigente && isMutationPath && isProtectedMutation) {
         return res.status(402).json({
           success: false,
           error: 'Tu clínica no tiene una suscripción activa',
           code: 'SUSCRIPCION_REQUERIDA'
         });
       }
-
-      req.subscription = vigente || null;
     }
 
     req.user = {

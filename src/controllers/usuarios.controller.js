@@ -53,7 +53,7 @@ function toSlug(value) {
 }
 
 function construirRedirectPath(usuario, contextoEmpresa) {
-  if (usuario?.rol === 'SUPERADMIN' && !contextoEmpresa?.id) return '/superadmin';
+  if (usuario?.rol === 'SUPERADMIN') return '/superadmin-dashboard';
   if (!contextoEmpresa?.id) return null;
 
   const nombreSlug = toSlug(contextoEmpresa.nombre || contextoEmpresa.id);
@@ -195,17 +195,45 @@ class UsuariosController {
       }
 
       if (req.user?.rol === 'ADMIN') {
-        const empresaIdUsuario = req.user?.clinica_id ?? req.user?.empresa_id;
-        if (rol === 'SUPERADMIN' || rol === 'ADMIN') {
-          return res.status(403).json({ success: false, error: 'ADMIN no puede crear usuarios ADMIN o SUPERADMIN' });
+        // SuperAdmin puede crear ADMINs sin validar suscripción
+        // ADMIN solo puede crear si hay suscripción (y solo DOCTOR/STAFF en su propia clínica)
+        if (rol !== 'SUPERADMIN' && req.user?.rol !== 'SUPERADMIN') {
+          const cupo = await SuscripcionesModel.validarCupoUsuarios(clinica_id);
+          if (!cupo.permitido) {
+            if (cupo.razon === 'SIN_SUSCRIPCION') {
+              return res.status(402).json({
+                success: false,
+                error: 'La clínica no tiene una suscripción activa',
+                code: 'SUSCRIPCION_REQUERIDA'
+              });
+            }
+
+            return res.status(409).json({
+              success: false,
+              error: 'Se alcanzó el límite de usuarios activos del plan',
+              code: 'LIMITE_PLAN_USUARIOS',
+              data: {
+                limite: cupo.limite,
+                usados: cupo.usados
+              }
+            });
+          }
         }
 
-        if (clinica_id !== empresaIdUsuario) {
-          return res.status(403).json({ success: false, error: 'ADMIN solo puede crear usuarios en su empresa' });
-        }
+        if (req.user?.rol === 'ADMIN') {
+          const empresaIdUsuario = req.user?.clinica_id ?? req.user?.empresa_id;
+          if (rol === 'SUPERADMIN' || rol === 'ADMIN') {
+            return res.status(403).json({ success: false, error: 'ADMIN no puede crear usuarios ADMIN o SUPERADMIN' });
+          }
+
+          if (clinica_id !== empresaIdUsuario) {
+            return res.status(403).json({ success: false, error: 'ADMIN solo puede crear usuarios en su empresa' });
+          }
       }
 
-      const emailNormalizado = normalizarEmail(email);
+        }
+
+        const emailNormalizado = normalizarEmail(email);
       const existeEmail = await UsuariosModel.existeEmail(emailNormalizado);
       if (existeEmail) {
         return res.status(409).json({ success: false, error: 'El email ya existe en la base de datos' });
@@ -439,14 +467,8 @@ class UsuariosController {
 
       let suscripcion = null;
       if (usuarioConLogin.rol !== 'SUPERADMIN') {
+        // Verificar suscripción pero permitir entrada incluso si no existe (ADMIN puede ver panel con restricciones)
         suscripcion = await SuscripcionesModel.obtenerVigentePorEmpresa(usuarioConLogin.clinica_id);
-        if (!suscripcion) {
-          return res.status(402).json({
-            success: false,
-            error: 'Tu clínica no tiene una suscripción activa',
-            code: 'SUSCRIPCION_REQUERIDA'
-          });
-        }
       }
 
       const redirectPath = construirRedirectPath(usuarioConLogin, contextoEmpresa);

@@ -132,14 +132,6 @@ async function readinessHandler(req, res) {
 app.get('/readyz', readinessHandler);
 app.get('/api/readyz', readinessHandler);
 
-app.get('/dashboard', authenticateToken, authorizeRoles('SUPERADMIN'), (req, res) => {
-  res.redirect('/superadmin');
-});
-
-app.get('/superadmin', authenticateToken, authorizeRoles('SUPERADMIN'), (req, res) => {
-  res.redirect('/html/superadmin.html');
-});
-
 app.use('/api', csrfMiddleware);
 app.use('/api', auditContext); // Inyecta contexto de auditoría (user_id)
 app.use('/api/personas', personasRoutes);
