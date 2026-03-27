@@ -17,6 +17,18 @@ const platformRoutes = require('./routes/platform');
 const pacientesRoutes = require('./routes/pacientes');
 const citasRoutes = require('./routes/citas');
 const atencionesRoutes = require('./routes/atenciones');
+const clinicaConfiguracionRoutes = require('./routes/clinica-configuracion');
+const clinicaDominiosRoutes = require('./routes/clinica-dominios');
+const clinicaIntegracionesRoutes = require('./routes/clinica-integraciones');
+const facturasClinicaRoutes = require('./routes/facturas-clinica');
+const pagosClinicaRoutes = require('./routes/pagos-clinica');
+const webhookEventosPagoRoutes = require('./routes/webhook-eventos-pago');
+const apiKeysRoutes = require('./routes/api-keys');
+const mfaFactorsRoutes = require('./routes/mfa-factors');
+const mfaChallengesRoutes = require('./routes/mfa-challenges');
+const invitacionesUsuarioRoutes = require('./routes/invitaciones-usuario');
+const usuarioEspecialidadesRoutes = require('./routes/usuario-especialidades');
+const recetasMedicasRoutes = require('./routes/recetas-medicas');
 const errorHandler = require('./middlewares/error-handler');
 const csrfMiddleware = require('./middlewares/csrf');
 const requestLogger = require('./middlewares/request-logger');
@@ -145,6 +157,18 @@ app.use('/api/platform', platformRoutes);
 app.use('/api/pacientes', pacientesRoutes);
 app.use('/api/citas', citasRoutes);
 app.use('/api/atenciones', atencionesRoutes);
+app.use('/api/clinica-configuracion', clinicaConfiguracionRoutes);
+app.use('/api/clinica-dominios', clinicaDominiosRoutes);
+app.use('/api/clinica-integraciones', clinicaIntegracionesRoutes);
+app.use('/api/facturas-clinica', facturasClinicaRoutes);
+app.use('/api/pagos-clinica', pagosClinicaRoutes);
+app.use('/api/webhook-eventos-pago', webhookEventosPagoRoutes);
+app.use('/api/api-keys', apiKeysRoutes);
+app.use('/api/mfa-factors', mfaFactorsRoutes);
+app.use('/api/mfa-challenges', mfaChallengesRoutes);
+app.use('/api/invitaciones-usuario', invitacionesUsuarioRoutes);
+app.use('/api/usuario-especialidades', usuarioEspecialidadesRoutes);
+app.use('/api/recetas-medicas', recetasMedicasRoutes);
 
 app.use('/api', (req, res) => {
   res.status(404).json({
