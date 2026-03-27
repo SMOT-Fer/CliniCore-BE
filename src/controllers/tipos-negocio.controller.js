@@ -1,5 +1,24 @@
 const TiposNegocioModel = require('../models/tipos-negocio.model');
 
+function mapTiposNegocioError(error) {
+  const msg = String(error?.message || '').toLowerCase();
+
+  // Si la BD aun tiene tipos_negocio como VIEW legacy, inserciones/updates/deletes fallan.
+  if (msg.includes('cannot insert into view') || msg.includes('cannot update view') || msg.includes('cannot delete from view')) {
+    return 'Catálogo en modo solo lectura. Ejecuta la migración 010_enable_tipos_negocio_crud.sql';
+  }
+
+  if (error?.code === '22P02') {
+    return 'ID de tipo de negocio inválido';
+  }
+
+  if (error?.code === '23505') {
+    return 'Ya existe un tipo de negocio con ese código';
+  }
+
+  return null;
+}
+
 class TiposNegocioController {
   static async listar(req, res) {
     try {
@@ -29,6 +48,14 @@ class TiposNegocioController {
 
   static async crear(req, res) {
     try {
+      const editable = await TiposNegocioModel.esCatalogoEditable();
+      if (!editable) {
+        return res.status(409).json({
+          success: false,
+          error: 'Catálogo en modo solo lectura. Ejecuta la migración 010_enable_tipos_negocio_crud.sql'
+        });
+      }
+
       const codigo = req.body.codigo.trim().toUpperCase();
       const nombre = req.body.nombre.trim();
 
@@ -41,12 +68,22 @@ class TiposNegocioController {
       return res.status(201).json({ success: true, data: tipo });
     } catch (error) {
       console.error('Error al crear tipo de negocio:', error);
+      const mapped = mapTiposNegocioError(error);
+      if (mapped) return res.status(409).json({ success: false, error: mapped });
       return res.status(500).json({ success: false, error: 'Error interno del servidor' });
     }
   }
 
   static async actualizar(req, res) {
     try {
+      const editable = await TiposNegocioModel.esCatalogoEditable();
+      if (!editable) {
+        return res.status(409).json({
+          success: false,
+          error: 'Catálogo en modo solo lectura. Ejecuta la migración 010_enable_tipos_negocio_crud.sql'
+        });
+      }
+
       const { id } = req.params;
       const actual = await TiposNegocioModel.obtenerPorId(id);
       if (!actual) {
@@ -72,12 +109,22 @@ class TiposNegocioController {
       return res.json({ success: true, data: tipo });
     } catch (error) {
       console.error('Error al actualizar tipo de negocio:', error);
+      const mapped = mapTiposNegocioError(error);
+      if (mapped) return res.status(409).json({ success: false, error: mapped });
       return res.status(500).json({ success: false, error: 'Error interno del servidor' });
     }
   }
 
   static async eliminar(req, res) {
     try {
+      const editable = await TiposNegocioModel.esCatalogoEditable();
+      if (!editable) {
+        return res.status(409).json({
+          success: false,
+          error: 'Catálogo en modo solo lectura. Ejecuta la migración 010_enable_tipos_negocio_crud.sql'
+        });
+      }
+
       const { id } = req.params;
       const actual = await TiposNegocioModel.obtenerPorId(id);
       if (!actual) {
@@ -101,6 +148,8 @@ class TiposNegocioController {
       return res.json({ success: true, message: 'Tipo de negocio eliminado correctamente' });
     } catch (error) {
       console.error('Error al eliminar tipo de negocio:', error);
+      const mapped = mapTiposNegocioError(error);
+      if (mapped) return res.status(409).json({ success: false, error: mapped });
       return res.status(500).json({ success: false, error: 'Error interno del servidor' });
     }
   }

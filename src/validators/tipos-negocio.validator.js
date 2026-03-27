@@ -14,7 +14,12 @@ const schemaActualizarTipoNegocio = z
     message: 'Debe enviar al menos un campo para actualizar'
   });
 
+const schemaTipoNegocioIdParam = z.object({
+  id: z.string().trim().min(1, 'ID requerido')
+});
+
 module.exports = {
   schemaCrearTipoNegocio,
-  schemaActualizarTipoNegocio
+  schemaActualizarTipoNegocio,
+  schemaTipoNegocioIdParam
 };

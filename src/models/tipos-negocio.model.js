@@ -1,6 +1,20 @@
 const db = require('../config/db');
 
 class TiposNegocioModel {
+  static async esCatalogoEditable() {
+    const response = await db.query(
+      `SELECT c.relkind
+       FROM pg_class c
+       JOIN pg_namespace n ON n.oid = c.relnamespace
+       WHERE n.nspname = 'public'
+         AND c.relname = 'tipos_negocio'
+       LIMIT 1`
+    );
+
+    // relkind = 'r' => tabla normal (editable). 'v'/'m' => vista/materialized view.
+    return response.rows[0]?.relkind === 'r';
+  }
+
   static async listarTodos() {
     const response = await db.query(
       `SELECT id, codigo, nombre
@@ -14,7 +28,7 @@ class TiposNegocioModel {
     const response = await db.query(
       `SELECT id, codigo, nombre
        FROM tipos_negocio
-       WHERE id = $1`,
+       WHERE id::text = $1`,
       [id]
     );
     return response.rows[0] || null;
@@ -62,7 +76,7 @@ class TiposNegocioModel {
     const response = await db.query(
       `UPDATE tipos_negocio
        SET ${setClause}
-       WHERE id = $${valores.length}
+       WHERE id::text = $${valores.length}
        RETURNING id, codigo, nombre`,
       valores
     );
@@ -73,7 +87,7 @@ class TiposNegocioModel {
   static async eliminar(id) {
     const response = await db.query(
       `DELETE FROM tipos_negocio
-       WHERE id = $1
+       WHERE id::text = $1
        RETURNING id`,
       [id]
     );
@@ -85,7 +99,7 @@ class TiposNegocioModel {
     const response = await db.query(
       `SELECT COUNT(*)::int AS total
        FROM clinicas
-       WHERE tipo_negocio_id = $1`,
+       WHERE tipo_negocio_id::text = $1`,
       [tipoNegocioId]
     );
 
