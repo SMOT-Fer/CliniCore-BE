@@ -29,6 +29,9 @@ const mfaChallengesRoutes = require('./routes/mfa-challenges');
 const invitacionesUsuarioRoutes = require('./routes/invitaciones-usuario');
 const usuarioEspecialidadesRoutes = require('./routes/usuario-especialidades');
 const recetasMedicasRoutes = require('./routes/recetas-medicas');
+const metodosPagoClinicaRoutes = require('./routes/metodos-pago-clinica');
+const outboxEventosRoutes = require('./routes/outbox-eventos');
+const usoPlanMensualRoutes = require('./routes/uso-plan-mensual');
 const errorHandler = require('./middlewares/error-handler');
 const csrfMiddleware = require('./middlewares/csrf');
 const requestLogger = require('./middlewares/request-logger');
@@ -169,6 +172,9 @@ app.use('/api/mfa-challenges', mfaChallengesRoutes);
 app.use('/api/invitaciones-usuario', invitacionesUsuarioRoutes);
 app.use('/api/usuario-especialidades', usuarioEspecialidadesRoutes);
 app.use('/api/recetas-medicas', recetasMedicasRoutes);
+app.use('/api/metodos-pago-clinica', metodosPagoClinicaRoutes);
+app.use('/api/outbox-eventos', outboxEventosRoutes);
+app.use('/api/uso-plan-mensual', usoPlanMensualRoutes);
 
 app.use('/api', (req, res) => {
   res.status(404).json({
