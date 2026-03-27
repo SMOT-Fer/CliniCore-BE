@@ -80,6 +80,17 @@ class TiposNegocioModel {
 
     return response.rows[0] || null;
   }
+
+  static async contarClinicasPorTipo(tipoNegocioId) {
+    const response = await db.query(
+      `SELECT COUNT(*)::int AS total
+       FROM clinicas
+       WHERE tipo_negocio_id = $1`,
+      [tipoNegocioId]
+    );
+
+    return response.rows[0]?.total || 0;
+  }
 }
 
 module.exports = TiposNegocioModel;
