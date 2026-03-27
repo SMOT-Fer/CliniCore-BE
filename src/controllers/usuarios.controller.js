@@ -554,17 +554,19 @@ class UsuariosController {
 
       await RefreshTokensModel.revocarPorId(registro.id);
 
-      const nuevoRefreshToken = generarRefreshToken(usuario);
+      const usuarioConActividad = await UsuariosModel.actualizarUltimoLogin(usuario.id);
+
+      const nuevoRefreshToken = generarRefreshToken(usuarioConActividad);
       const nuevoHash = hashToken(nuevoRefreshToken);
       const nuevoExpira = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
       const nuevaSesion = await RefreshTokensModel.crear({
-        usuario_id: usuario.id,
+        usuario_id: usuarioConActividad.id,
         token_hash: nuevoHash,
         expires_at: nuevoExpira
       });
 
-      const accessToken = generarAccessToken(usuario, nuevaSesion.id);
+      const accessToken = generarAccessToken(usuarioConActividad, nuevaSesion.id);
 
       res.cookie('access_token', accessToken, {
         ...COOKIE_OPTIONS,
@@ -576,7 +578,7 @@ class UsuariosController {
         maxAge: 7 * 24 * 60 * 60 * 1000
       });
 
-      res.json({ success: true, data: usuario });
+      res.json({ success: true, data: usuarioConActividad });
     } catch (error) {
       console.error('Error al refrescar sesión:', error);
       res.status(401).json({ success: false, error: 'Refresh token inválido o expirado' });
