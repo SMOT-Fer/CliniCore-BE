@@ -128,7 +128,7 @@ class SuscripcionesModel {
   static async crearSuscripcionTrialInicial(empresaId, createdBy = null) {
     const response = await db.query(
       `WITH trial_plan AS (
-          SELECT id, COALESCE(dias_trial, 14) AS dias_trial
+          SELECT id
           FROM planes_saas
           WHERE codigo = 'TRIAL_CLINICA' AND estado = 'ACTIVO'
           LIMIT 1
@@ -155,8 +155,8 @@ class SuscripcionesModel {
           tp.id,
           'TRIAL'::suscripcion_estado,
           NOW(),
-          NOW() + make_interval(days => tp.dias_trial),
-          NOW() + make_interval(days => tp.dias_trial),
+          NOW() + interval '14 days',
+          NOW() + interval '14 days',
           $2,
           $2
         FROM trial_plan tp
@@ -176,7 +176,6 @@ class SuscripcionesModel {
     empresaId,
     planId,
     estadoInicial = 'ACTIVA',
-    duracionDias = 30,
     actorUserId = null
   }) {
     const client = await db.getClient();
@@ -212,13 +211,16 @@ class SuscripcionesModel {
            $2,
            $3::suscripcion_estado,
            NOW(),
-           NOW() + make_interval(days => $4::int),
-           CASE WHEN $3::suscripcion_estado = 'TRIAL' THEN NOW() + make_interval(days => $4::int) ELSE NULL END,
-           $5,
-           $5
+           CASE
+             WHEN $3::suscripcion_estado = 'TRIAL' THEN NOW() + interval '14 days'
+             ELSE NOW() + interval '1 month'
+           END,
+           CASE WHEN $3::suscripcion_estado = 'TRIAL' THEN NOW() + interval '14 days' ELSE NULL END,
+           $4,
+           $4
          )
          RETURNING *`,
-        [empresaId, planId, estadoInicial, duracionDias, actorUserId]
+        [empresaId, planId, estadoInicial, actorUserId]
       );
 
       const nueva = inserted.rows[0];
@@ -237,7 +239,10 @@ class SuscripcionesModel {
           nueva.id,
           empresaId,
           estadoInicial,
-          JSON.stringify({ plan_id: planId, duracion_dias: duracionDias }),
+          JSON.stringify({
+            plan_id: planId,
+            regla_duracion: estadoInicial === 'TRIAL' ? '14_days_fixed' : '1_calendar_month_fixed'
+          }),
           actorUserId
         ]
       );

@@ -168,7 +168,7 @@ class PlatformController {
 
   static async asignarPlanEmpresa(req, res) {
     try {
-      const { clinica_id, plan_id, estado, duracion_dias } = req.body;
+      const { clinica_id, plan_id, estado } = req.body;
 
       if (!clinica_id || !plan_id) {
         return res.status(400).json({ success: false, error: 'clinica_id y plan_id son obligatorios' });
@@ -183,7 +183,6 @@ class PlatformController {
         empresaId: clinica_id,
         planId: plan_id,
         estadoInicial: estado || 'ACTIVA',
-        duracionDias: Number(duracion_dias || 30),
         actorUserId: req.user?.id || null
       });
 
