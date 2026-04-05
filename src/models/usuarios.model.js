@@ -40,10 +40,8 @@ class UsuariosModel {
     const response = await db.query(
       `SELECT ${CAMPOS_VISIBLES}
        FROM usuarios
-       ORDER BY
-         CASE WHEN deleted_at IS NULL THEN 0 ELSE 1 END,
-         CASE WHEN deleted_at IS NULL THEN created_at END DESC,
-         CASE WHEN deleted_at IS NOT NULL THEN deleted_at END DESC`
+       WHERE deleted_at IS NULL
+       ORDER BY created_at DESC`
     );
     return response.rows;
   }

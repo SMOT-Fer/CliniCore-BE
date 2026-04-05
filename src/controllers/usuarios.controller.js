@@ -370,9 +370,8 @@ class UsuariosController {
         }
       }
 
-      // Usar soft delete para cumplimiento legal (healthcare)
-      const usuarioEliminado = await UsuariosModel.softDelete(id, req.user?.id);
-      res.json({ success: true, data: usuarioEliminado, message: 'Usuario eliminado correctamente' });
+      await UsuariosModel.eliminar(id);
+      res.json({ success: true, data: { id }, message: 'Usuario eliminado permanentemente' });
     } catch (error) {
       console.error('Error al eliminar usuario:', error);
       res.status(500).json({ success: false, error: 'Error interno del servidor' });
