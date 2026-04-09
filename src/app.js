@@ -11,6 +11,7 @@ const personasRoutes = require('./routes/personas');
 const clinicasRoutes = require('./routes/empresas');
 const tiposNegocioRoutes = require('./routes/tipos-negocio');
 const usuariosRoutes = require('./routes/usuarios');
+const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const auditLogsRoutes = require('./routes/audit-logs');
 const platformRoutes = require('./routes/platform');
@@ -149,6 +150,7 @@ app.get('/api/readyz', readinessHandler);
 
 app.use('/api', csrfMiddleware);
 app.use('/api', auditContext); // Inyecta contexto de auditoría (user_id)
+app.use('/api/auth', authRoutes); // Rutas de autenticación (registro, recuperación, OAuth)
 app.use('/api/personas', personasRoutes);
 app.use('/api/clinicas', clinicasRoutes);
 app.use('/api/empresas', clinicasRoutes); // legacy alias
